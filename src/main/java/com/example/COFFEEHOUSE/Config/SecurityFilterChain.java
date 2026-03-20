@@ -69,7 +69,7 @@ public class SecurityFilterChain {
 
         return http.build();
     }
-    @Value("${app.cors.allowed-origin}")
+
     private String allowOrigin="http://127.0.0.1:5500";
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

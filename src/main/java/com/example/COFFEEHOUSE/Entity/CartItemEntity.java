@@ -9,16 +9,17 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
-public class UserEntity {
+@Table(name = "cart_items")
+public class CartItemEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String username;
-    private String password;
-    private String email;
-    private String fullName;
-    private String address;
-    private Long roleId;
-    private Long points;
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "product_size_id")
+    private Long productSizeId;
+
+    private Integer quantity;
 }
