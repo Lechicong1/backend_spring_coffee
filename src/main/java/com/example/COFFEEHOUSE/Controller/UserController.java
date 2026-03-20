@@ -31,38 +31,42 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<ResponseData> updateUser(@PathVariable Long id, @RequestBody UserReq userReq) {
         userService.updateUser(id, userReq);
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message("User updated successfully")
-                .build());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("User updated successfully")
+                        .build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ResponseData> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message("User deleted successfully")
-                .build());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("User deleted successfully")
+                        .build());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ResponseData> getUserById(@PathVariable Long id) {
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message("User retrieved successfully")
-                .data( userService.findById(id))
-                .build());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("User retrieved successfully")
+                        .data(userService.findById(id))
+                        .build());
     }
 
     @GetMapping
     public ResponseEntity<ResponseData> getAllUsers() {
 
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message("Users retrieved successfully")
-                .data( userService.findAll())
-                .build());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("User retrieved successfully")
+                        .data(userService.findAll())
+                        .build());
     }
 }
 

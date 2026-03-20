@@ -19,6 +19,8 @@ public class UserEntity {
     private String password;
     private String email;
     private String fullName;
+    private String address;
     private Long roleId;
+    private Long points;
 
 }

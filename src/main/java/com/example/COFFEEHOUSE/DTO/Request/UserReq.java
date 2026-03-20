@@ -10,5 +10,8 @@ public class UserReq {
     private String password;
     private String email;
     private String fullName;
+    private Long roleId;
+    private Long points;
+    private String address;
 
 }
