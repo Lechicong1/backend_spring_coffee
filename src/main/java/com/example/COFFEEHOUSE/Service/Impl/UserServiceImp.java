@@ -3,11 +3,15 @@ package com.example.COFFEEHOUSE.Service.Impl;
 import com.example.COFFEEHOUSE.DTO.Mapper.UserMapper;
 import com.example.COFFEEHOUSE.DTO.Request.UserReq;
 import com.example.COFFEEHOUSE.DTO.Response.UserResp;
+import com.example.COFFEEHOUSE.Entity.RoleEntity;
+import com.example.COFFEEHOUSE.Enums.ROLE;
+import com.example.COFFEEHOUSE.Reposistory.RoleRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.UserService;
 import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,13 +20,20 @@ import java.util.List;
 public class UserServiceImp implements UserService {
     private final UserMapper userMapper;
     private final UserRepo userRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final RoleRepo roleRepo;
     @Override
     public void createUser(UserReq userReq) {
+        RoleEntity roleDefault = roleRepo.findByName(ROLE.USER.name());
+        if(roleDefault == null) {
+            throw new ResourceNotFoundException("Default role not found: " + ROLE.USER.name());
+        }
         UserEntity user = UserEntity.builder()
                 .username(userReq.getUsername())
-                .password(userReq.getPassword())
+                .password(passwordEncoder.encode(userReq.getPassword()))
                 .email(userReq.getEmail())
                 .fullName(userReq.getFullName())
+                .roleId(roleDefault.getId())
                 .build();
         userRepo.save(user);
     }
