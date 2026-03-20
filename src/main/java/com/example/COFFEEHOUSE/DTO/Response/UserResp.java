@@ -15,5 +15,7 @@ public class UserResp {
     private String password;
     private String email;
     private String fullName;
+    private Long roleId;
+    private Long points;
 
 }
