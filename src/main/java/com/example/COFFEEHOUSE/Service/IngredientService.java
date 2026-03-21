@@ -18,4 +18,3 @@ public interface IngredientService {
 
     List<IngredientResp> search(String keyword);
 }
-

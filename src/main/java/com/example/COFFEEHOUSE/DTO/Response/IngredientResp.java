@@ -13,4 +13,3 @@ public class IngredientResp {
     private String unit;
     private Double stockQuantity;
 }
-
