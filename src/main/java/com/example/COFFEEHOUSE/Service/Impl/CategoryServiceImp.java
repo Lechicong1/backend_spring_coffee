@@ -22,6 +22,7 @@ public class CategoryServiceImp implements CategoryService {
 
     @Override
     public void createCategory(CategoryReq request) {
+        // validate ngay trong request , su dung annotation @Valid
         if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
             throw new InvalidInputException("Category name must be between 2 and 255 characters");
         }
@@ -42,23 +43,12 @@ public class CategoryServiceImp implements CategoryService {
         CategoryEntity existing = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
-        if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
-            throw new InvalidInputException("Category name must be between 2 and 255 characters");
-        }
-
-        if (categoryRepo.findByNameAndIdNot(request.getName(), id).isPresent()) {
-            throw new DuplicateResourceException("Category with name '" + request.getName() + "' already exists");
-        }
-
         categoryMapper.updateEntityFromRequest(request, existing);
         categoryRepo.save(existing);
     }
 
     @Override
     public void deleteCategory(Long id) {
-        if (!categoryRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Category not found with id: " + id);
-        }
         categoryRepo.deleteById(id);
     }
 

@@ -30,7 +30,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
     @Override
     @Transactional
     public void createImport(InventoryImportReq request) {
-        // Validation
+        // Validation chuyen sang class InventoryImportReq
         validateImportRequest(request);
 
         // Check if ingredient exists
@@ -42,7 +42,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
                 .ingredientId(request.getIngredientId())
                 .importQuantity(request.getImportQuantity())
                 .totalCost(request.getTotalCost())
-                .importDate(request.getImportDate() != null ? request.getImportDate() : LocalDateTime.now())
+                .importDate(LocalDateTime.now())
                 .note(request.getNote())
                 .build();
 
@@ -58,7 +58,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
     @Override
     @Transactional
     public void updateImport(Long id, InventoryImportReq request) {
-        // Validation
+        // Validation chuyen sang class InventoryImportReq
         validateImportRequest(request);
 
         // Get old import
@@ -77,9 +77,6 @@ public class InventoryImportServiceImp implements InventoryImportService {
         oldImport.setIngredientId(request.getIngredientId());
         oldImport.setImportQuantity(request.getImportQuantity());
         oldImport.setTotalCost(request.getTotalCost());
-        if (request.getImportDate() != null) {
-            oldImport.setImportDate(request.getImportDate());
-        }
         oldImport.setNote(request.getNote());
         inventoryImportRepo.save(oldImport);
 
@@ -117,8 +114,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
         InventoryImportEntity importEntity = inventoryImportRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Import not found with id: " + id));
 
-        // Delete import
-        inventoryImportRepo.delete(importEntity);
+
 
         // Subtract quantity from ingredient stock (fixing the bug mentioned in the flow)
         IngredientEntity ingredient = ingredientRepo.findById(importEntity.getIngredientId()).orElse(null);
@@ -128,6 +124,8 @@ public class InventoryImportServiceImp implements InventoryImportService {
             ingredient.setUpdatedAt(LocalDateTime.now());
             ingredientRepo.save(ingredient);
         }
+        // Delete import
+        inventoryImportRepo.delete(importEntity);
     }
 
     @Override
@@ -152,7 +150,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
         }
 
         String trimmedKeyword = keyword.trim();
-
+        // sua lai ham tim kiem dua cac tham so ve tang repo cho ngan gon
         // Search by note
         List<InventoryImportEntity> byNote = inventoryImportRepo.searchByNote(trimmedKeyword);
 
@@ -198,7 +196,7 @@ public class InventoryImportServiceImp implements InventoryImportService {
                 .note(entity.getNote())
                 .build();
     }
-
+    // validate trong inventory import request
     private void validateImportRequest(InventoryImportReq request) {
         if (request.getIngredientId() == null) {
             throw new InvalidInputException("Ingredient ID is required");

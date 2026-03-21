@@ -22,7 +22,7 @@ public class RecipeServiceImp implements RecipeService {
     @Override
     public void createRecipe(RecipeReq request) {
         validateRecipeRequest(request);
-
+        // sua lai 1 san pham thi se co nhieu nguyen lieu
         RecipeEntity entity = RecipeEntity.builder()
                 .productId(request.getProductId())
                 .ingredientId(request.getIngredientId())
@@ -37,7 +37,7 @@ public class RecipeServiceImp implements RecipeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Recipe not found with id: " + id));
 
         validateRecipeRequest(request);
-
+        // sua lai giong them 1 san pham thi se co nhieu nguyen lieu
         existing.setProductId(request.getProductId());
         existing.setIngredientId(request.getIngredientId());
         existing.setBaseAmount(request.getBaseAmount());
@@ -47,9 +47,7 @@ public class RecipeServiceImp implements RecipeService {
 
     @Override
     public void deleteRecipe(Long id) {
-        if (!recipeRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Recipe not found with id: " + id);
-        }
+
         recipeRepo.deleteById(id);
     }
 
@@ -74,7 +72,7 @@ public class RecipeServiceImp implements RecipeService {
     public List<RecipeResp> findByIngredient(Long ingredientId) {
         return recipeMapper.toDTOList(recipeRepo.findByIngredientId(ingredientId));
     }
-
+    // su dung anotation @Valid trong controller de validate request, neu co loi se tu dong tra ve 400 Bad Request
     private void validateRecipeRequest(RecipeReq request) {
         if (request.getProductId() == null) {
             throw new InvalidInputException("Product ID is required");
