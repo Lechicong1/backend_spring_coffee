@@ -9,4 +9,3 @@ public class IngredientReq {
     private String name;
     private String unit;
 }
-

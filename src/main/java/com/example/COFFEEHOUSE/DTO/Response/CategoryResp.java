@@ -12,4 +12,3 @@ public class CategoryResp {
     private String name;
     private String description;
 }
-
