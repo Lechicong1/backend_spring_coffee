@@ -22,6 +22,7 @@ public class IngredientServiceImp implements IngredientService {
 
     @Override
     public void createIngredient(IngredientReq request) {
+        // chuyen validate sang class IngredientReq
         if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
             throw new InvalidInputException("Ingredient name must be between 2 and 255 characters");
         }
@@ -43,9 +44,6 @@ public class IngredientServiceImp implements IngredientService {
         IngredientEntity existing = ingredientRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ingredient not found with id: " + id));
 
-        if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
-            throw new InvalidInputException("Ingredient name must be between 2 and 255 characters");
-        }
 
         if (ingredientRepo.findByNameAndIdNot(request.getName(), id).isPresent()) {
             throw new DuplicateResourceException("Ingredient with name '" + request.getName() + "' already exists");
@@ -57,9 +55,7 @@ public class IngredientServiceImp implements IngredientService {
 
     @Override
     public void deleteIngredient(Long id) {
-        if (!ingredientRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Ingredient not found with id: " + id);
-        }
+
         ingredientRepo.deleteById(id);
     }
 

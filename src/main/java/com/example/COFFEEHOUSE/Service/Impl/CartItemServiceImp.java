@@ -23,11 +23,13 @@ public class CartItemServiceImp implements CartItemService {
 
     @Override
     public void addToCart(CartItemReq request) {
+        // chuyen validate sang class CartItemReq
         validateCartItemRequest(request);
 
         if (!userRepo.existsById(request.getUserId())) {
             throw new ResourceNotFoundException("User not found with id: " + request.getUserId());
         }
+
 
         var existingItem = cartItemRepo.findByUserIdAndProductSizeId(request.getUserId(), request.getProductSizeId());
 
@@ -60,9 +62,7 @@ public class CartItemServiceImp implements CartItemService {
 
     @Override
     public void removeFromCart(Long id) {
-        if (!cartItemRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Cart item not found with id: " + id);
-        }
+
         cartItemRepo.deleteById(id);
     }
 
