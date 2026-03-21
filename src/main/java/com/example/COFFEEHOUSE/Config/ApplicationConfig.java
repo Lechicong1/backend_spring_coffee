@@ -42,6 +42,7 @@ public class ApplicationConfig {
                         .username("admin")
                         .password(passwordEncoder.encode("admin")   )
                         .email("Lechicong20055@gmail.com")
+                        .fullName("Admin")
                         .roleId(adminRole.getId()).build();
                 userRepo.save(user);
             }
