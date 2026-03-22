@@ -10,6 +10,7 @@ import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.CartItemRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.CartItemService;
+import com.example.COFFEEHOUSE.Utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,9 +72,18 @@ public class CartItemServiceImp implements CartItemService {
         cartItemRepo.deleteById(id);
     }
 
-    // Lấy tất cả mục trong giỏ hàng của người dùng
     @Override
-    public List<CartItemResp> getCart(Long userId) {
+    public void clearCart() {
+        Long userId = CommonUtils.getIdUserFromToken();
+        if (!userRepo.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
+        }
+        cartItemRepo.deleteByUserId(userId);
+    }
+
+    @Override
+    public List<CartItemResp> getCart() {
+        Long userId = CommonUtils.getIdUserFromToken();
         if (!userRepo.existsById(userId)) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         }

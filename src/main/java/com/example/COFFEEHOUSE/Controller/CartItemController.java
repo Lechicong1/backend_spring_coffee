@@ -44,6 +44,14 @@ public class CartItemController {
                 .build());
     }
 
+    @DeleteMapping("/clearCart")
+    public ResponseEntity<ResponseData> clearCart() {
+        cartItemService.clearCart();
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Cart cleared successfully")
+                .build());
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ResponseData> getCartItem(@PathVariable Long id) {
@@ -54,12 +62,12 @@ public class CartItemController {
                 .build());
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<ResponseData> getCart(@PathVariable Long userId) {
+    @GetMapping("/myCart")
+    public ResponseEntity<ResponseData> getCart() {
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
                 .message("Cart retrieved successfully")
-                .data(cartItemService.getCart(userId))
+                .data(cartItemService.getCart())
                 .build());
     }
 
