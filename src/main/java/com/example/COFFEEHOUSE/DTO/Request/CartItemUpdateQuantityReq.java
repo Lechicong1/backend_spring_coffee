@@ -7,13 +7,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CartItemReq {
-    @Valid
-    private Long userId;
-    @Valid
-    private Long productSizeId;
+public class CartItemUpdateQuantityReq {
     @Valid
     @Min(value = 1)
     private Integer quantity;
 }
-
