@@ -3,6 +3,7 @@ package com.example.COFFEEHOUSE.Controller;
 import com.example.COFFEEHOUSE.DTO.Request.RecipeReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import com.example.COFFEEHOUSE.Service.RecipeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,7 @@ public class RecipeController {
     private final RecipeService recipeService;
 
     @PostMapping
-    public ResponseEntity<ResponseData> create(@RequestBody RecipeReq request) {
+    public ResponseEntity<ResponseData> create(@Valid @RequestBody RecipeReq request) {
         recipeService.createRecipe(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.builder()
@@ -25,7 +26,7 @@ public class RecipeController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ResponseData> update(@PathVariable Long id, @RequestBody RecipeReq request) {
+    public ResponseEntity<ResponseData> update(@PathVariable Long id,@Valid @RequestBody RecipeReq request) {
         recipeService.updateRecipe(id, request);
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)

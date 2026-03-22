@@ -22,15 +22,6 @@ public class CategoryServiceImp implements CategoryService {
 
     @Override
     public void createCategory(CategoryReq request) {
-        // validate ngay trong request , su dung annotation @Valid
-        if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
-            throw new InvalidInputException("Category name must be between 2 and 255 characters");
-        }
-
-        if (categoryRepo.findByName(request.getName()).isPresent()) {
-            throw new DuplicateResourceException("Category with name '" + request.getName() + "' already exists");
-        }
-
         CategoryEntity entity = CategoryEntity.builder()
                 .name(request.getName())
                 .description(request.getDescription())

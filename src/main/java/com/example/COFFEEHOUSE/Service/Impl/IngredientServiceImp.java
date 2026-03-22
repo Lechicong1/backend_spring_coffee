@@ -5,7 +5,6 @@ import com.example.COFFEEHOUSE.DTO.Request.IngredientReq;
 import com.example.COFFEEHOUSE.DTO.Response.IngredientResp;
 import com.example.COFFEEHOUSE.Entity.IngredientEntity;
 import com.example.COFFEEHOUSE.Exception.DuplicateResourceException;
-import com.example.COFFEEHOUSE.Exception.InvalidInputException;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.IngredientRepo;
 import com.example.COFFEEHOUSE.Service.IngredientService;
@@ -22,10 +21,6 @@ public class IngredientServiceImp implements IngredientService {
 
     @Override
     public void createIngredient(IngredientReq request) {
-        // chuyen validate sang class IngredientReq
-        if (request.getName() == null || request.getName().trim().length() < 2 || request.getName().length() > 255) {
-            throw new InvalidInputException("Ingredient name must be between 2 and 255 characters");
-        }
 
         if (ingredientRepo.findByName(request.getName()).isPresent()) {
             throw new DuplicateResourceException("Ingredient with name '" + request.getName() + "' already exists");
@@ -44,7 +39,6 @@ public class IngredientServiceImp implements IngredientService {
         IngredientEntity existing = ingredientRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ingredient not found with id: " + id));
 
-
         if (ingredientRepo.findByNameAndIdNot(request.getName(), id).isPresent()) {
             throw new DuplicateResourceException("Ingredient with name '" + request.getName() + "' already exists");
         }
@@ -54,10 +48,7 @@ public class IngredientServiceImp implements IngredientService {
     }
 
     @Override
-    public void deleteIngredient(Long id) {
-
-        ingredientRepo.deleteById(id);
-    }
+    public void deleteIngredient(Long id) { ingredientRepo.deleteById(id); }
 
     @Override
     public List<IngredientResp> findAll() {
