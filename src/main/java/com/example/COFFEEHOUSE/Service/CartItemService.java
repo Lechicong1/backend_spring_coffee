@@ -19,9 +19,7 @@ public interface CartItemService {
 
     CartItemResp getCartItem(Long id);
 
-    Long getCartCount(Long userId);
 
-    void checkout(Long userId, boolean isBuyNow);
 
 }
 

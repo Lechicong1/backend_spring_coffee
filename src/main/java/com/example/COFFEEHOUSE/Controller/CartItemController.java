@@ -71,22 +71,6 @@ public class CartItemController {
                 .build());
     }
 
-    @GetMapping("/user/{userId}/count")
-    public ResponseEntity<ResponseData> getCartCount(@PathVariable Long userId) {
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message("Cart count retrieved successfully")
-                .data(cartItemService.getCartCount(userId))
-                .build());
-    }
 
-    @PostMapping("/checkout")
-    public ResponseEntity<ResponseData> checkout(@RequestParam Long userId, @RequestParam(defaultValue = "false") boolean isBuyNow) {
-        cartItemService.checkout(userId, isBuyNow);
-        return ResponseEntity.ok(ResponseData.builder()
-                .success(true)
-                .message(isBuyNow ? "Checkout completed (Buy Now - cart preserved)" : "Checkout completed and cart cleared")
-                .build());
-    }
 }
 

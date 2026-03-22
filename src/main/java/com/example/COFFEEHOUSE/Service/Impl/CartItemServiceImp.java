@@ -98,27 +98,7 @@ public class CartItemServiceImp implements CartItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + id));
     }
 
-    // Lấy tổng số lượng sản phẩm trong giỏ hàng của người dùng
-    @Override
-    public Long getCartCount(Long userId) {
-        if (!userRepo.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found with id: " + userId);
-        }
-        return cartItemRepo.sumQuantityByUserId(userId);
-    }
 
-
-    //mua ngay thi xoa gio hang, nguoc lai thi giu lai gio hang
-    @Override
-    @Transactional
-    public void checkout(Long userId, boolean isBuyNow) {
-        if (!userRepo.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found with id: " + userId);
-        }
-        if (!isBuyNow) {
-            cartItemRepo.deleteByUserId(userId);
-        }
-    }
 
 }
 
