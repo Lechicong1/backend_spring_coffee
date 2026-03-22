@@ -2,6 +2,7 @@ package com.example.COFFEEHOUSE.Service.Impl;
 
 import com.example.COFFEEHOUSE.DTO.Mapper.CartItemMapper;
 import com.example.COFFEEHOUSE.DTO.Request.CartItemReq;
+import com.example.COFFEEHOUSE.DTO.Request.CartItemUpdateQuantityReq;
 import com.example.COFFEEHOUSE.DTO.Response.CartItemResp;
 import com.example.COFFEEHOUSE.Entity.CartItemEntity;
 import com.example.COFFEEHOUSE.Exception.InvalidInputException;
@@ -11,6 +12,7 @@ import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.CartItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,14 +24,11 @@ public class CartItemServiceImp implements CartItemService {
     private final UserRepo userRepo;
 
     @Override
+    @Transactional
     public void addToCart(CartItemReq request) {
-        // chuyen validate sang class CartItemReq
-        validateCartItemRequest(request);
-
         if (!userRepo.existsById(request.getUserId())) {
             throw new ResourceNotFoundException("User not found with id: " + request.getUserId());
         }
-
 
         var existingItem = cartItemRepo.findByUserIdAndProductSizeId(request.getUserId(), request.getProductSizeId());
 
@@ -47,33 +46,32 @@ public class CartItemServiceImp implements CartItemService {
         }
     }
 
+    // Cập nhật số lượng của một mục trong giỏ hàng
     @Override
-    public void updateCartItem(Long id, CartItemReq request) {
+    @Transactional
+    public void updateCartItem(Long id, CartItemUpdateQuantityReq request) {
         CartItemEntity existing = cartItemRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + id));
 
-        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-            throw new InvalidInputException("Quantity must be greater than 0");
+        if (request.getQuantity() <= 0) {
+            cartItemRepo.delete(existing);
+            return;
         }
 
         existing.setQuantity(request.getQuantity());
-        cartItemRepo.save(existing);
     }
 
+    // Xóa một mục khỏi giỏ hàng
     @Override
+    @Transactional
     public void removeFromCart(Long id) {
-
+        if (!cartItemRepo.existsById(id)) {
+            throw new ResourceNotFoundException("Cart item not found with id: " + id);
+        }
         cartItemRepo.deleteById(id);
     }
 
-    @Override
-    public void clearCart(Long userId) {
-        if (!userRepo.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found with id: " + userId);
-        }
-        cartItemRepo.deleteByUserId(userId);
-    }
-
+    // Lấy tất cả mục trong giỏ hàng của người dùng
     @Override
     public List<CartItemResp> getCart(Long userId) {
         if (!userRepo.existsById(userId)) {
@@ -82,6 +80,7 @@ public class CartItemServiceImp implements CartItemService {
         return cartItemMapper.toDTOList(cartItemRepo.findByUserId(userId));
     }
 
+    // Lấy thông tin chi tiết của một mục trong giỏ hàng
     @Override
     public CartItemResp getCartItem(Long id) {
         return cartItemRepo.findById(id)
@@ -89,16 +88,27 @@ public class CartItemServiceImp implements CartItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + id));
     }
 
-    private void validateCartItemRequest(CartItemReq request) {
-        if (request.getUserId() == null) {
-            throw new InvalidInputException("User ID is required");
+    // Lấy tổng số lượng sản phẩm trong giỏ hàng của người dùng
+    @Override
+    public Long getCartCount(Long userId) {
+        if (!userRepo.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
         }
-        if (request.getProductSizeId() == null) {
-            throw new InvalidInputException("Product Size ID is required");
+        return cartItemRepo.sumQuantityByUserId(userId);
+    }
+
+
+    //mua ngay thi xoa gio hang, nguoc lai thi giu lai gio hang
+    @Override
+    @Transactional
+    public void checkout(Long userId, boolean isBuyNow) {
+        if (!userRepo.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
         }
-        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-            throw new InvalidInputException("Quantity must be greater than 0");
+        if (!isBuyNow) {
+            cartItemRepo.deleteByUserId(userId);
         }
     }
+
 }
 
