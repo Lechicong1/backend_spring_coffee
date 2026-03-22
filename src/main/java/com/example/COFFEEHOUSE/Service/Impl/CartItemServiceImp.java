@@ -10,6 +10,7 @@ import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.CartItemRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.CartItemService;
+import com.example.COFFEEHOUSE.Utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,9 +72,18 @@ public class CartItemServiceImp implements CartItemService {
         cartItemRepo.deleteById(id);
     }
 
-    // Lấy tất cả mục trong giỏ hàng của người dùng
     @Override
-    public List<CartItemResp> getCart(Long userId) {
+    public void clearCart() {
+        Long userId = CommonUtils.getIdUserFromToken();
+        if (!userRepo.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with id: " + userId);
+        }
+        cartItemRepo.deleteByUserId(userId);
+    }
+
+    @Override
+    public List<CartItemResp> getCart() {
+        Long userId = CommonUtils.getIdUserFromToken();
         if (!userRepo.existsById(userId)) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         }
@@ -88,27 +98,7 @@ public class CartItemServiceImp implements CartItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + id));
     }
 
-    // Lấy tổng số lượng sản phẩm trong giỏ hàng của người dùng
-    @Override
-    public Long getCartCount(Long userId) {
-        if (!userRepo.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found with id: " + userId);
-        }
-        return cartItemRepo.sumQuantityByUserId(userId);
-    }
 
-
-    //mua ngay thi xoa gio hang, nguoc lai thi giu lai gio hang
-    @Override
-    @Transactional
-    public void checkout(Long userId, boolean isBuyNow) {
-        if (!userRepo.existsById(userId)) {
-            throw new ResourceNotFoundException("User not found with id: " + userId);
-        }
-        if (!isBuyNow) {
-            cartItemRepo.deleteByUserId(userId);
-        }
-    }
 
 }
 
