@@ -26,10 +26,11 @@ public class IngredientServiceImp implements IngredientService {
             throw new DuplicateResourceException("Ingredient with name '" + request.getName() + "' already exists");
         }
 
+        Double initialStock = request.getStockQuantity() != null ? request.getStockQuantity() : 0.0;
         IngredientEntity entity = IngredientEntity.builder()
                 .name(request.getName())
                 .unit(request.getUnit())
-                .stockQuantity(0.0)
+                .stockQuantity(initialStock)
                 .build();
         ingredientRepo.save(entity);
     }
