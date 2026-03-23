@@ -44,6 +44,7 @@ public class EmployeeServiceImp implements EmployeeService {
                 .email(userReq.getEmail())
                 .fullName(userReq.getFullName())
                 .address(userReq.getAddress())
+                .phoneNumber(userReq.getPhone())
                 .roleId(role.getId())
                 .build();
         userRepo.save(user);
@@ -65,6 +66,7 @@ public class EmployeeServiceImp implements EmployeeService {
         user.setFullName(userReq.getFullName());
         user.setEmail(userReq.getEmail());
         user.setAddress(userReq.getAddress());
+        user.setPhoneNumber(userReq.getPhone());
         if (userReq.getRoleId() != null) {
             user.setRoleId(userReq.getRoleId());
         }

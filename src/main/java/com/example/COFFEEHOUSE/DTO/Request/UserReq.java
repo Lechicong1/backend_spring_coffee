@@ -15,4 +15,5 @@ public class UserReq {
     private String address;
     private Long salary;
     private java.time.LocalDate hireDate;
+    private Long phone ;
 }

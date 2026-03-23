@@ -22,6 +22,7 @@ public interface EmployeeMapper {
     @Mapping(target = "roleName", source = "role.name")
     @Mapping(target = "salary", source = "employee.salary")
     @Mapping(target = "hireDate", source = "employee.hireDate")
+    @Mapping(target = "phone", source = "user.phoneNumber")
     EmployeeResp toDTO(UserEntity user, EmployeeEntity employee, RoleEntity role);
 }
 

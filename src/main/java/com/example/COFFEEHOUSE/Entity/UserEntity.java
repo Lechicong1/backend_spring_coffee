@@ -21,4 +21,5 @@ public class UserEntity {
     private String address;
     private Long roleId;
     private Long points;
+    private Long phoneNumber;
 }
