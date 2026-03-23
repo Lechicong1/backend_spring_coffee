@@ -11,4 +11,6 @@ public class IngredientReq {
     private String name;
 
     private String unit;
+
+    private Double stockQuantity;
 }

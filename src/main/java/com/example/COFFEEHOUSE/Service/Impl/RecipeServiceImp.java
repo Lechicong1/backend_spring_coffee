@@ -11,6 +11,7 @@ import com.example.COFFEEHOUSE.Service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.ArrayList;
@@ -24,34 +25,37 @@ public class RecipeServiceImp implements RecipeService {
 
     @Override
     public void createRecipe(RecipeReq request) {
-       List<RecipeEntity> recipes = new ArrayList<>();
-         for (RecipeReq.IngredientItem item : request.getIngredientsList()) {
-             RecipeEntity recipe = new RecipeEntity();
-             recipe.setProductId(request.getProductId());
-             recipe.setIngredientId(item.getIngredientId());
-             recipe.setBaseAmount(item.getBaseAmount());
-
-             recipes.add(recipe);
-         }
-        recipeRepo.saveAll(recipes);
-    }
-
-    @Override
-    public void updateRecipe(Long id, RecipeReq request) {
-        RecipeEntity existing = recipeRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipe not found with id: " + id));
-
         List<RecipeEntity> recipes = new ArrayList<>();
         for (RecipeReq.IngredientItem item : request.getIngredientsList()) {
             RecipeEntity recipe = new RecipeEntity();
-            recipe.setId(existing.getId());
             recipe.setProductId(request.getProductId());
             recipe.setIngredientId(item.getIngredientId());
             recipe.setBaseAmount(item.getBaseAmount());
-
             recipes.add(recipe);
         }
         recipeRepo.saveAll(recipes);
+    }
+
+    @Transactional
+    public void updateRecipe(Long productId, RecipeReq request) {
+
+        // 1. XÓA hết nguyên liệu cũ của product này
+        recipeRepo.deleteByProductId(productId);
+
+        // 2. Thêm lại từ request
+        List<RecipeEntity> list = new ArrayList<>();
+
+        for (RecipeReq.IngredientItem item : request.getIngredientsList()) {
+            RecipeEntity entity = new RecipeEntity();
+
+            entity.setProductId(productId);
+            entity.setIngredientId(item.getIngredientId());
+            entity.setBaseAmount(item.getBaseAmount());
+
+            list.add(entity);
+        }
+
+        recipeRepo.saveAll(list);
     }
 
     @Override
