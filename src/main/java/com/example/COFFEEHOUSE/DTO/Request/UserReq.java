@@ -13,5 +13,6 @@ public class UserReq {
     private Long roleId;
     private Long points;
     private String address;
-
+    private Long salary;
+    private java.time.LocalDate hireDate;
 }
