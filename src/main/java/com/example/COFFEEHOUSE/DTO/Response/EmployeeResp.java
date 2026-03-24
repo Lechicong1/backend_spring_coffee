@@ -1,19 +1,20 @@
-package com.example.COFFEEHOUSE.DTO.Request;
+package com.example.COFFEEHOUSE.DTO.Response;
 
 import lombok.Getter;
 import lombok.Setter;
+import java.time.LocalDate;
 
 @Getter
 @Setter
-public class UserReq {
+public class EmployeeResp {
+    private Long id;
     private String username;
-    private String password;
     private String email;
     private String fullName;
-    private Long roleId;
-    private Long points;
     private String address;
+    private Long roleId;
+    private String roleName;
     private Long salary;
-    private java.time.LocalDate hireDate;
+    private LocalDate hireDate;
     private Long phone ;
 }

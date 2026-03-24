@@ -13,6 +13,7 @@ import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 @Service
@@ -22,23 +23,29 @@ public class UserServiceImp implements UserService {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepo roleRepo;
+
     @Override
+    @Transactional
     public void createUser(UserReq userReq) {
         RoleEntity roleDefault = roleRepo.findByName(ROLE.USER.name());
         if(roleDefault == null) {
             throw new ResourceNotFoundException("Default role not found: " + ROLE.USER.name());
         }
+
+        Long roleId = userReq.getRoleId() == null ? roleDefault.getId() : userReq.getRoleId();
+
         UserEntity user = UserEntity.builder()
                 .username(userReq.getUsername())
                 .password(passwordEncoder.encode(userReq.getPassword()))
                 .email(userReq.getEmail())
                 .fullName(userReq.getFullName())
-                .roleId(roleDefault.getId())
+                .roleId(roleId)
                 .build();
         userRepo.save(user);
     }
 
     @Override
+    @Transactional
     public void updateUser(Long id, UserReq userReq) {
         UserEntity existingUser = userRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
