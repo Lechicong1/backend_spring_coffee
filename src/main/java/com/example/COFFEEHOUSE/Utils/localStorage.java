@@ -37,10 +37,10 @@ public class localStorage implements FileStorage {
             Path filePath = uploadPath.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Trả về đường dẫn đầy đủ để lưu vào database
-            String fullPath = filePath.toAbsolutePath().toString();
-            log.info("File đã lưu tại: {}", fullPath);
-            return fullPath;
+            // Trả về đường dẫn tương đối (relative path) để lưu vào database
+            String relativePath = filePath.toString().replace("\\", "/");
+            log.info("File đã lưu tại: {}", relativePath);
+            return relativePath;
         } catch (IOException e) {
             log.error("Không thể lưu file: {}", e.getMessage(), e);
             throw new RuntimeException("Không thể lưu file: " + e.getMessage(), e);
