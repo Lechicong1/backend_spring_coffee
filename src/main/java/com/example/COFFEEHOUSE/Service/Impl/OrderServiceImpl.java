@@ -1,5 +1,6 @@
 package com.example.COFFEEHOUSE.Service.Impl;
 
+import com.example.COFFEEHOUSE.DTO.Mapper.OrderMapper;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderFromCartReq;
 import com.example.COFFEEHOUSE.DTO.Request.OrderItemReq;
@@ -29,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemRepo orderItemRepo;
     private final ProductSizeRepo productSizeRepo;
     private final VoucherRepo voucherRepo;
+    private final OrderMapper orderMapper;
 
     /**
      * Tạo đơn hàng mới
@@ -512,13 +514,17 @@ public class OrderServiceImpl implements OrderService {
      * Helper: Tạo order code
      */
     private String generateOrderCode() {
-        return "ORD-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        Random random = new Random();
+        int randomNum = 10000 + random.nextInt(90000);
+        return "ORD" + randomNum;
     }
 
     /**
      * Helper: Map OrderEntity -> OrderResp
      */
     private OrderResp mapOrderToResp(OrderEntity order, List<OrderItemEntity> items) {
+        OrderResp resp = orderMapper.toResponse(order);
+
         List<OrderItemResp> itemResponses = items.stream()
                 .map(item -> OrderItemResp.builder()
                         .id(item.getId())
@@ -529,25 +535,7 @@ public class OrderServiceImpl implements OrderService {
                         .build())
                 .collect(Collectors.toList());
 
-        return OrderResp.builder()
-                .id(order.getId())
-                .orderCode(order.getOrderCode())
-                .userId(order.getUserId())
-                .orderType(order.getOrderType())
-                .status(order.getStatus())
-                .paymentStatus(order.getPaymentStatus())
-                .tableNumber(order.getTableNumber())
-                .paymentMethod(order.getPaymentMethod())
-                .totalAmount(order.getTotalAmount())
-                .shippingAddress(order.getShippingAddress())
-                .receiverName(order.getReceiverName())
-                .receiverPhone(order.getReceiverPhone())
-                .shippingFee(order.getShippingFee())
-                .note(order.getNote())
-                .voucherId(order.getVoucherId())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .items(itemResponses)
-                .build();
+        resp.setItems(itemResponses);
+        return resp;
     }
 }
