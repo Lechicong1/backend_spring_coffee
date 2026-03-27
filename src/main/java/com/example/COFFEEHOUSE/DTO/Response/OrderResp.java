@@ -20,6 +20,7 @@ public class OrderResp {
     private Long id;
     private String orderCode;
     private Long userId;
+    private String customerName;
     private OrderType orderType;
     private OrderStatus status;
     private PaymentStatus paymentStatus;
@@ -36,4 +37,3 @@ public class OrderResp {
     private LocalDateTime updatedAt;
     private List<OrderItemResp> items;
 }
-

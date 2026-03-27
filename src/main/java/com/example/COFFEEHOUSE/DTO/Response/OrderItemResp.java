@@ -15,5 +15,7 @@ public class OrderItemResp {
     private Integer quantity;
     private Long priceAtPurchase;
     private String note;
+    private String productName;
+    private String sizeName;
 }
 
