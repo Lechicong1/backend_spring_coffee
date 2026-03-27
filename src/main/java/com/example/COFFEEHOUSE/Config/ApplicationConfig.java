@@ -13,6 +13,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Optional;
+
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
@@ -34,10 +36,7 @@ public class ApplicationConfig {
                 }
             }
             if (userRepo.findByUsername("admin") == null) {
-                RoleEntity adminRole = roleRepo.findByName(ROLE.ADMIN.name());
-                if (adminRole == null) {
-                    throw new IllegalStateException("ADMIN role not found. Seed roles first.");
-                }
+                RoleEntity adminRole = (RoleEntity) roleRepo.findByName(ROLE.ADMIN.name());
                 UserEntity user = UserEntity.builder()
                         .username("admin")
                         .password(passwordEncoder.encode("admin")   )

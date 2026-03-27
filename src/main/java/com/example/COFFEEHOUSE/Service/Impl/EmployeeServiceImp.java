@@ -47,10 +47,11 @@ public class EmployeeServiceImp implements EmployeeService {
                 .phoneNumber(userReq.getPhone())
                 .roleId(role.getId())
                 .build();
-        userRepo.save(user);
+
+        UserEntity savedUser = userRepo.save(user);
 
         EmployeeEntity employee = EmployeeEntity.builder()
-                .userId(user.getId())
+                .userId(savedUser.getId())
                 .salary(userReq.getSalary())
                 .hireDate(userReq.getHireDate() != null ? userReq.getHireDate() : LocalDate.now())
                 .build();
