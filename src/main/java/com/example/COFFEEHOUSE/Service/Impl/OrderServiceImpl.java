@@ -20,7 +20,9 @@ import com.example.COFFEEHOUSE.Exception.InvalidInputException;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.OrderItemRepo;
 import com.example.COFFEEHOUSE.Reposistory.OrderRepo;
+import com.example.COFFEEHOUSE.Reposistory.ProductRepo;
 import com.example.COFFEEHOUSE.Reposistory.ProductSizeRepo;
+import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
 import com.example.COFFEEHOUSE.Service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -40,12 +42,14 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepo orderRepo;
     private final OrderItemRepo orderItemRepo;
     private final ProductSizeRepo productSizeRepo;
+    private final ProductRepo productRepo;
+    private final UserRepo userRepo;
     private final VoucherRepo voucherRepo;
     private final OrderMapper orderMapper;
 
     /**
      * Tạo đơn hàng mới
-     * - Chỉ nhân viên (STAFF) mới được tạo đơn - được kiểm tra bằng @PreAuthorize
+     * - Chỉ nhân viên (STAFF) mới được tạo đơn
      * - Kiểm tra giá từ DB để chống gian lận
      * - Tính toán lại tổng tiền với voucher (nếu có)
      */
@@ -188,7 +192,6 @@ public class OrderServiceImpl implements OrderService {
     /**
      * Tạo đơn hàng từ cart (CreateOrderFromCartReq)
      * - Được sử dụng bởi hệ thống POS
-     * - Chỉ nhân viên (STAFF) mới được tạo đơn - được kiểm tra bằng @PreAuthorize
      * - Kiểm tra giá từ DB để chống gian lận
      */
     @Override
@@ -504,14 +507,42 @@ public class OrderServiceImpl implements OrderService {
     private OrderResp mapOrderToResp(OrderEntity order, List<OrderItemEntity> items) {
         OrderResp resp = orderMapper.toResponse(order);
 
+        // ✅ Lấy tên khách hàng
+        if (order.getUserId() != null) {
+            String customerName = userRepo.findById(order.getUserId())
+                    .map(user -> user.getFullName() != null ? user.getFullName() : user.getUsername())
+                    .orElse("Khách hàng");
+            resp.setCustomerName(customerName);
+        } else {
+            resp.setCustomerName("Khách vãng lai");
+        }
+
         List<OrderItemResp> itemResponses = items.stream()
-                .map(item -> OrderItemResp.builder()
-                        .id(item.getId())
-                        .productSizeId(item.getProductSizeId())
-                        .quantity(item.getQuantity())
-                        .priceAtPurchase(item.getPriceAtPurchase())
-                        .note(item.getNote())
-                        .build())
+                .map(item -> {
+                    // ✅ JOIN với product_sizes và products để lấy tên
+                    ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
+                            .orElse(null);
+
+                    String productName = "Unknown Product";
+                    String sizeName = "Unknown Size";
+
+                    if (productSize != null) {
+                        sizeName = productSize.getSizeName();
+                        productName = productRepo.findById(productSize.getProductId())
+                                .map(p -> p.getName())
+                                .orElse("Unknown Product");
+                    }
+
+                    return OrderItemResp.builder()
+                            .id(item.getId())
+                            .productSizeId(item.getProductSizeId())
+                            .quantity(item.getQuantity())
+                            .priceAtPurchase(item.getPriceAtPurchase())
+                            .note(item.getNote())
+                            .productName(productName)
+                            .sizeName(sizeName)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         resp.setItems(itemResponses);
