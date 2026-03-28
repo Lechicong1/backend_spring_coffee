@@ -18,3 +18,4 @@ public class EmployeeEntity {
     private Long salary;
     private LocalDate hireDate;
 }
+
