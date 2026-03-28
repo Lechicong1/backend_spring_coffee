@@ -16,7 +16,6 @@ import com.example.COFFEEHOUSE.Enums.OrderStatus;
 import com.example.COFFEEHOUSE.Enums.OrderType;
 import com.example.COFFEEHOUSE.Enums.PaymentMethod;
 import com.example.COFFEEHOUSE.Enums.PaymentStatus;
-import com.example.COFFEEHOUSE.Exception.ForbiddenException;
 import com.example.COFFEEHOUSE.Exception.InvalidInputException;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.OrderItemRepo;
@@ -46,17 +45,12 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Tạo đơn hàng mới
-     * - Chỉ nhân viên (STAFF) mới được tạo đơn
+     * - Chỉ nhân viên (STAFF) mới được tạo đơn - được kiểm tra bằng @PreAuthorize
      * - Kiểm tra giá từ DB để chống gian lận
      * - Tính toán lại tổng tiền với voucher (nếu có)
      */
     @Override
-    public OrderResp createOrder(CreateOrderReq request, String staffRole) {
-        // Kiểm tra quyền: chỉ STAFF được tạo đơn
-        if (!"STAFF".equals(staffRole) && !"ADMIN".equals(staffRole)) {
-            throw new ForbiddenException("Chỉ nhân viên mới có quyền tạo đơn hàng");
-        }
-
+    public OrderResp createOrder(CreateOrderReq request) {
         // Validate request
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new InvalidInputException("Đơn hàng phải có ít nhất 1 sản phẩm");
@@ -194,15 +188,11 @@ public class OrderServiceImpl implements OrderService {
     /**
      * Tạo đơn hàng từ cart (CreateOrderFromCartReq)
      * - Được sử dụng bởi hệ thống POS
+     * - Chỉ nhân viên (STAFF) mới được tạo đơn - được kiểm tra bằng @PreAuthorize
      * - Kiểm tra giá từ DB để chống gian lận
      */
     @Override
-    public OrderResp createOrderFromCart(CreateOrderFromCartReq request, String staffRole) {
-        // Kiểm tra quyền: chỉ STAFF được tạo đơn
-        if (!"STAFF".equals(staffRole) && !"ADMIN".equals(staffRole)) {
-            throw new ForbiddenException("Chỉ nhân viên mới có quyền tạo đơn hàng");
-        }
-
+    public OrderResp createOrderFromCart(CreateOrderFromCartReq request) {
         // Validate request
         if (request.getCartItems() == null || request.getCartItems().isEmpty()) {
             throw new InvalidInputException("Đơn hàng phải có ít nhất 1 sản phẩm");
@@ -354,15 +344,11 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Cập nhật đơn hàng
-     * - Chỉ STAFF/ADMIN được cập nhật
+     * - Chỉ STAFF/ADMIN được cập nhật - được kiểm tra bằng @PreAuthorize
      * - Không được sửa giá (nhưng có thể sửa trạng thái, bàn, v.v.)
      */
     @Override
-    public OrderResp updateOrder(Long orderId, UpdateOrderReq request, String staffRole) {
-        if (!"STAFF".equals(staffRole) && !"ADMIN".equals(staffRole)) {
-            throw new ForbiddenException("Chỉ nhân viên mới có quyền cập nhật đơn hàng");
-        }
-
+    public OrderResp updateOrder(Long orderId, UpdateOrderReq request) {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
@@ -465,15 +451,11 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Xóa đơn hàng
-     * - Chỉ ADMIN được xóa
+     * - Chỉ ADMIN được xóa - được kiểm tra bằng @PreAuthorize
      * - Chỉ xóa đơn PENDING
      */
     @Override
-    public void deleteOrder(Long orderId, String staffRole) {
-        if (!"ADMIN".equals(staffRole)) {
-            throw new ForbiddenException("Chỉ ADMIN mới có quyền xóa đơn hàng");
-        }
-
+    public void deleteOrder(Long orderId) {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
@@ -491,14 +473,11 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Hủy đơn hàng
+     * - STAFF/ADMIN được hủy - được kiểm tra bằng @PreAuthorize
      * - Có thể hủy từ các trạng thái nhất định
      */
     @Override
-    public void cancelOrder(Long orderId, String staffRole) {
-        if (!"STAFF".equals(staffRole) && !"ADMIN".equals(staffRole)) {
-            throw new ForbiddenException("Chỉ nhân viên mới có quyền hủy đơn hàng");
-        }
-
+    public void cancelOrder(Long orderId) {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 

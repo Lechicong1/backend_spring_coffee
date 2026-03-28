@@ -8,8 +8,7 @@ import com.example.COFFEEHOUSE.Service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,20 +25,17 @@ public class OrderController {
     private static final String MSG_LIST = "Lấy danh sách đơn hàng thành công";
     private static final String MSG_DELETED = "Đơn hàng được xóa thành công";
     private static final String MSG_CANCELLED = "Đơn hàng được hủy thành công";
-    private static final String MSG_FORBIDDEN = "Chỉ nhân viên mới có quyền xem tất cả đơn hàng";
 
     /**
      * POST /orders - Tạo đơn hàng mới
      * Chỉ STAFF/ADMIN mới được tạo
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrder(
-            @RequestBody CreateOrderReq request,
-            Authentication authentication) {
+            @RequestBody CreateOrderReq request) {
 
-        String staffRole = extractRole(authentication);
-
-        var orderResp = orderService.createOrder(request, staffRole);
+        var orderResp = orderService.createOrder(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.builder()
@@ -54,13 +50,11 @@ public class OrderController {
      * Chỉ STAFF/ADMIN mới được tạo
      */
     @PostMapping("/from-cart")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrderFromCart(
-            @RequestBody CreateOrderFromCartReq request,
-            Authentication authentication) {
+            @RequestBody CreateOrderFromCartReq request) {
 
-        String staffRole = extractRole(authentication);
-
-        var orderResp = orderService.createOrderFromCart(request, staffRole);
+        var orderResp = orderService.createOrderFromCart(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.builder()
@@ -70,19 +64,13 @@ public class OrderController {
                         .build());
     }
 
-    /**
-     * PUT /orders/{id} - Cập nhật đơn hàng
-     * Chỉ STAFF/ADMIN mới được cập nhật
-     */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'SHIPPER')")
     public ResponseEntity<ResponseData> updateOrder(
             @PathVariable Long id,
-            @RequestBody UpdateOrderReq request,
-            Authentication authentication) {
+            @RequestBody UpdateOrderReq request) {
 
-        String staffRole = extractRole(authentication);
-
-        var orderResp = orderService.updateOrder(id, request, staffRole);
+        var orderResp = orderService.updateOrder(id, request);
 
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
@@ -138,17 +126,8 @@ public class OrderController {
      * Chỉ STAFF/ADMIN được xem
      */
     @GetMapping
-    public ResponseEntity<ResponseData> getAllOrders(Authentication authentication) {
-        String staffRole = extractRole(authentication);
-
-        if (!"STAFF".equals(staffRole) && !"ADMIN".equals(staffRole)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ResponseData.builder()
-                            .success(false)
-                            .message(MSG_FORBIDDEN)
-                            .build());
-        }
-
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> getAllOrders() {
         var orders = orderService.getAllOrders();
 
         return ResponseEntity.ok(ResponseData.builder()
@@ -163,13 +142,11 @@ public class OrderController {
      * Chỉ ADMIN được xóa
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResponseData> deleteOrder(
-            @PathVariable Long id,
-            Authentication authentication) {
+            @PathVariable Long id) {
 
-        String staffRole = extractRole(authentication);
-
-        orderService.deleteOrder(id, staffRole);
+        orderService.deleteOrder(id);
 
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
@@ -182,31 +159,15 @@ public class OrderController {
      * STAFF/ADMIN được hủy
      */
     @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> cancelOrder(
-            @PathVariable Long id,
-            Authentication authentication) {
+            @PathVariable Long id) {
 
-        String staffRole = extractRole(authentication);
-
-        orderService.cancelOrder(id, staffRole);
+        orderService.cancelOrder(id);
 
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
                 .message(MSG_CANCELLED)
                 .build());
-    }
-
-    /**
-     * Helper: Lấy role từ JWT
-     */
-    private String extractRole(Authentication authentication) {
-        if (authentication == null) {
-            return null;
-        }
-
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .findFirst()
-                .orElse(null);
     }
 }
