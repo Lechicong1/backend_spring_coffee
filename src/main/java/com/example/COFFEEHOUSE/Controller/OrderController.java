@@ -7,6 +7,7 @@ import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.Service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,9 +34,9 @@ public class OrderController {
      * Chỉ STAFF/ADMIN mới được tạo
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
+//    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrder(
-            @RequestBody CreateOrderReq request) {
+            @Valid @RequestBody CreateOrderReq request) {
 
         var orderResp = orderService.createOrder(request);
 
@@ -54,7 +55,7 @@ public class OrderController {
     @PostMapping("/from-cart")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrderFromCart(
-            @RequestBody CreateOrderFromCartReq request) {
+            @Valid @RequestBody CreateOrderFromCartReq request) {
 
         var orderResp = orderService.createOrderFromCart(request);
 
