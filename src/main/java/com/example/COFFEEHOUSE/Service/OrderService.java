@@ -24,4 +24,7 @@ public interface OrderService {
     InvoiceResp getInvoiceByCode(String orderCode);
     OrderDetailResp getOrderDetail(Long orderId);
     OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request);
+
+    List<OrderResp> getOrdersByCurrentUserJWT();
+
 }
