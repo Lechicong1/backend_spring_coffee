@@ -11,5 +11,6 @@ public interface RecipeRepo extends JpaRepository<RecipeEntity, Long> {
     List<RecipeEntity> findByProductId(Long productId);
 
     List<RecipeEntity> findByIngredientId(Long ingredientId);
-}
 
+    void deleteByProductId(Long productId);
+}
