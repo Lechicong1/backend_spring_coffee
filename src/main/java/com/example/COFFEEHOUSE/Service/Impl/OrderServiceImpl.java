@@ -1,12 +1,17 @@
 package com.example.COFFEEHOUSE.Service.Impl;
 
+import com.example.COFFEEHOUSE.DTO.Mapper.InvoiceMapper;
 import com.example.COFFEEHOUSE.DTO.Mapper.OrderMapper;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderFromCartReq;
 import com.example.COFFEEHOUSE.DTO.Request.OrderItemReq;
 import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderReq;
+import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
+import com.example.COFFEEHOUSE.DTO.Response.OrderDetailResp;
 import com.example.COFFEEHOUSE.DTO.Response.OrderItemResp;
 import com.example.COFFEEHOUSE.DTO.Response.OrderResp;
+import com.example.COFFEEHOUSE.DTO.Response.InvoiceItemResp;
+import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.Entity.OrderEntity;
 import com.example.COFFEEHOUSE.Entity.OrderItemEntity;
 import com.example.COFFEEHOUSE.Entity.ProductSizeEntity;
@@ -46,6 +51,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepo userRepo;
     private final VoucherRepo voucherRepo;
     private final OrderMapper orderMapper;
+    private final InvoiceMapper invoiceMapper;
 
     /**
      * Tạo đơn hàng mới
@@ -349,6 +355,8 @@ public class OrderServiceImpl implements OrderService {
      * Cập nhật đơn hàng
      * - Chỉ STAFF/ADMIN được cập nhật - được kiểm tra bằng @PreAuthorize
      * - Không được sửa giá (nhưng có thể sửa trạng thái, bàn, v.v.)
+     * - Ghi chú chỉ được sửa khi trạng thái là PENDING
+     * - Nếu đổi từ AT_COUNTER sang TAKEAWAY, sẽ xóa số bàn
      */
     @Override
     public OrderResp updateOrder(Long orderId, UpdateOrderReq request) {
@@ -368,8 +376,39 @@ public class OrderServiceImpl implements OrderService {
             order.setPaymentMethod(request.getPaymentMethod());
         }
 
-        if (request.getTableNumber() != null) {
-            order.setTableNumber(request.getTableNumber());
+        // Cập nhật loại đơn hàng và xử lý số bàn
+        if (request.getOrderType() != null) {
+            OrderType newOrderType = request.getOrderType();
+            OrderType oldOrderType = order.getOrderType();
+
+            order.setOrderType(newOrderType);
+
+            // Nếu chuyển từ AT_COUNTER sang TAKEAWAY, xóa số bàn
+            if (oldOrderType == OrderType.AT_COUNTER && newOrderType == OrderType.TAKEAWAY) {
+                order.setTableNumber(null);
+            }
+            // Nếu chuyển sang AT_COUNTER, cần số bàn
+            else if (newOrderType == OrderType.AT_COUNTER) {
+                if (request.getTableNumber() == null || request.getTableNumber().trim().isEmpty()) {
+                    throw new InvalidInputException("Vui lòng chọn số bàn khi thay đổi loại đơn sang ăn tại quầy");
+                }
+                order.setTableNumber(request.getTableNumber());
+            }
+            // Nếu không thay đổi loại hoặc chuyển đổi khác, cập nhật số bàn nếu có
+            else if (request.getTableNumber() != null) {
+                if (request.getTableNumber().trim().isEmpty()) {
+                    order.setTableNumber(null);
+                } else {
+                    order.setTableNumber(request.getTableNumber());
+                }
+            }
+        } else if (request.getTableNumber() != null) {
+            // Nếu không thay đổi orderType nhưng cập nhật tableNumber
+            if (request.getTableNumber().trim().isEmpty()) {
+                order.setTableNumber(null);
+            } else {
+                order.setTableNumber(request.getTableNumber());
+            }
         }
 
         if (request.getShippingAddress() != null) {
@@ -388,6 +427,7 @@ public class OrderServiceImpl implements OrderService {
             order.setShippingFee(request.getShippingFee());
         }
 
+        // Ghi chú chỉ được sửa khi đơn hàng ở trạng thái PENDING
         if (request.getNote() != null) {
             order.setNote(request.getNote());
         }
@@ -493,6 +533,67 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * Lấy hóa đơn theo order code
+     */
+    @Override
+    public InvoiceResp getInvoiceByCode(String orderCode) {
+        OrderEntity order = orderRepo.findByOrderCode(orderCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với code: " + orderCode));
+
+        List<OrderItemEntity> items = orderItemRepo.findByOrderId(order.getId());
+
+        long subtotal = items.stream()
+                .mapToLong(i -> i.getPriceAtPurchase() * i.getQuantity())
+                .sum();
+
+        long voucherDiscount = 0;
+        String voucherCode = null;
+        if (order.getVoucherId() != null && order.getVoucherId() > 0) {
+            VoucherEntity voucher = voucherRepo.findById(order.getVoucherId()).orElse(null);
+            if (voucher != null) {
+                voucherCode = voucher.getName();
+                if (DiscountType.FIXED == voucher.getDiscountType()) {
+                    voucherDiscount = voucher.getDiscountValue().longValue();
+                } else {
+                    voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
+                }
+                if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
+                    voucherDiscount = voucher.getMaxDiscountValue().longValue();
+                }
+                voucherDiscount = Math.min(voucherDiscount, subtotal);
+            }
+        }
+
+        long shippingFee = order.getShippingFee() != null ? order.getShippingFee() : 0L;
+        long totalAmount = Math.max(0, subtotal - voucherDiscount + shippingFee);
+
+        List<InvoiceItemResp> invoiceItems = items.stream()
+                .map(invoiceMapper::toInvoiceItemResp)
+                .map(itemResp -> {
+                    ProductSizeEntity size = productSizeRepo.findById(itemResp.getProductSizeId()).orElse(null);
+                    String sizeName = size != null ? size.getSizeName() : "Unknown Size";
+                    String productName = size != null
+                            ? productRepo.findById(size.getProductId()).map(p -> p.getName()).orElse("Unknown Product")
+                            : "Unknown Product";
+                    itemResp.setSizeName(sizeName);
+                    itemResp.setProductName(productName);
+                    return itemResp;
+                })
+                .collect(Collectors.toList());
+
+        InvoiceResp invoice = invoiceMapper.toInvoiceResp(order);
+        invoice.setStoreName("COFFEE HOUSE");
+        invoice.setSubtotal(subtotal);
+        invoice.setVoucherDiscount(voucherDiscount);
+        invoice.setVoucherCode(voucherCode);
+        invoice.setShippingFee(shippingFee);
+        invoice.setTotalAmount(totalAmount);
+        invoice.setItems(invoiceItems);
+
+        return invoice;
+    }
+
+    /**
      * Helper: Tạo order code
      */
     private String generateOrderCode() {
@@ -507,7 +608,6 @@ public class OrderServiceImpl implements OrderService {
     private OrderResp mapOrderToResp(OrderEntity order, List<OrderItemEntity> items) {
         OrderResp resp = orderMapper.toResponse(order);
 
-        // ✅ Lấy tên khách hàng
         if (order.getUserId() != null) {
             String customerName = userRepo.findById(order.getUserId())
                     .map(user -> user.getFullName() != null ? user.getFullName() : user.getUsername())
@@ -519,7 +619,6 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItemResp> itemResponses = items.stream()
                 .map(item -> {
-                    // ✅ JOIN với product_sizes và products để lấy tên
                     ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
                             .orElse(null);
 
@@ -547,5 +646,83 @@ public class OrderServiceImpl implements OrderService {
 
         resp.setItems(itemResponses);
         return resp;
+    }
+
+    /**
+     * Lấy chi tiết đơn hàng
+     */
+    @Override
+    public OrderDetailResp getOrderDetail(Long orderId) {
+        OrderEntity order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        List<OrderItemResp> items = orderItemRepo.findByOrderId(orderId).stream()
+                .map(item -> {
+                    ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
+                    String sizeName = productSize != null ? productSize.getSizeName() : "Unknown Size";
+                    String productName = productSize != null
+                            ? productRepo.findById(productSize.getProductId()).map(p -> p.getName()).orElse("Unknown Product")
+                            : "Unknown Product";
+
+                    long lineTotal = item.getPriceAtPurchase() * item.getQuantity();
+
+                    return OrderItemResp.builder()
+                            .id(item.getId())
+                            .productSizeId(item.getProductSizeId())
+                            .quantity(item.getQuantity())
+                            .priceAtPurchase(item.getPriceAtPurchase())
+                            .note(item.getNote())
+                            .productName(productName)
+                            .sizeName(sizeName)
+                            .lineTotal(lineTotal)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        long total = items.stream()
+                .mapToLong(OrderItemResp::getLineTotal)
+                .sum();
+
+        return OrderDetailResp.builder()
+                .orderCode(order.getOrderCode())
+                .items(items)
+                .totalAmount(total)
+                .build();
+    }
+
+    /**
+     * Cập nhật ghi chú cho order item
+     */
+    @Override
+    public OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request) {
+        OrderEntity order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        OrderItemEntity item = orderItemRepo.findById(request.getOrderItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi tiết đơn hàng với ID: " + request.getOrderItemId()));
+
+        if (!item.getOrderId().equals(order.getId())) {
+            throw new InvalidInputException("Chi tiết đơn hàng không thuộc đơn hàng này");
+        }
+
+        item.setNote(request.getNote());
+        OrderItemEntity saved = orderItemRepo.save(item);
+
+        ProductSizeEntity productSize = productSizeRepo.findById(saved.getProductSizeId()).orElse(null);
+        String sizeName = productSize != null ? productSize.getSizeName() : "Unknown Size";
+        String productName = productSize != null
+                ? productRepo.findById(productSize.getProductId()).map(p -> p.getName()).orElse("Unknown Product")
+                : "Unknown Product";
+
+        return OrderItemResp.builder()
+                .id(saved.getId())
+                .productSizeId(saved.getProductSizeId())
+                .quantity(saved.getQuantity())
+                .priceAtPurchase(saved.getPriceAtPurchase())
+                .note(saved.getNote())
+                .productName(productName)
+                .sizeName(sizeName)
+                .lineTotal(saved.getPriceAtPurchase() * saved.getQuantity())
+                .build();
     }
 }

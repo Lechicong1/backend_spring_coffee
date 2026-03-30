@@ -3,7 +3,9 @@ package com.example.COFFEEHOUSE.Controller;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderFromCartReq;
 import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderReq;
+import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
+import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.Service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,7 +33,7 @@ public class OrderController {
      * Chỉ STAFF/ADMIN mới được tạo
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrder(
             @RequestBody CreateOrderReq request) {
 
@@ -50,7 +52,7 @@ public class OrderController {
      * Chỉ STAFF/ADMIN mới được tạo
      */
     @PostMapping("/from-cart")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrderFromCart(
             @RequestBody CreateOrderFromCartReq request) {
 
@@ -65,7 +67,7 @@ public class OrderController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'SHIPPER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF', 'SHIPPER')")
     public ResponseEntity<ResponseData> updateOrder(
             @PathVariable Long id,
             @RequestBody UpdateOrderReq request) {
@@ -126,7 +128,7 @@ public class OrderController {
      * Chỉ STAFF/ADMIN được xem
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> getAllOrders() {
         var orders = orderService.getAllOrders();
 
@@ -142,7 +144,7 @@ public class OrderController {
      * Chỉ ADMIN được xóa
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','STAFF')")
     public ResponseEntity<ResponseData> deleteOrder(
             @PathVariable Long id) {
 
@@ -159,7 +161,7 @@ public class OrderController {
      * STAFF/ADMIN được hủy
      */
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> cancelOrder(
             @PathVariable Long id) {
 
@@ -168,6 +170,52 @@ public class OrderController {
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
                 .message(MSG_CANCELLED)
+                .build());
+    }
+
+    /**
+     * GET /orders/code/{code}/invoice - In hóa đơn theo order code
+     */
+    @GetMapping("/code/{code}/invoice")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> getInvoiceByCode(@PathVariable String code) {
+        InvoiceResp invoice = orderService.getInvoiceByCode(code);
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Lấy hóa đơn thành công")
+                .data(invoice)
+                .build());
+    }
+
+    /**
+     * GET /orders/{id}/detail - Lấy chi tiết đơn hàng (gọn cho modal: sản phẩm, size, SL, giá, thành tiền)
+     */
+    @GetMapping("/{id}/detail")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> getOrderDetail(@PathVariable Long id) {
+        var detail = orderService.getOrderDetail(id);
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message(MSG_DETAIL)
+                .data(detail)
+                .build());
+    }
+
+    /**
+     * PATCH /orders/{orderId}/items/{itemId}/note - Sửa ghi chú của chi tiết đơn hàng
+     */
+    @PatchMapping("/{orderId}/items/{itemId}/note")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> updateOrderItemNote(
+            @PathVariable Long orderId,
+            @PathVariable Long itemId,
+            @RequestBody UpdateOrderItemNoteReq request) {
+        request.setOrderItemId(itemId);
+        var itemResp = orderService.updateOrderItemNote(orderId, request);
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Cập nhật ghi chú chi tiết đơn hàng thành công")
+                .data(itemResp)
                 .build());
     }
 }
