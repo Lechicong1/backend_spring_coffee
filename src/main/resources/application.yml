@@ -6,7 +6,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/COFFEEHOUSE}
     username: ${DB_USER:root}
-    password: ${DB_PASS:742005}
+    password: ${DB_PASS:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   security:
     authentication:

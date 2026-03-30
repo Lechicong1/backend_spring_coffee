@@ -29,12 +29,14 @@ import com.example.COFFEEHOUSE.Reposistory.ProductRepo;
 import com.example.COFFEEHOUSE.Reposistory.ProductSizeRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
+import com.example.COFFEEHOUSE.Service.CartItemService;
 import com.example.COFFEEHOUSE.Service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -52,118 +54,17 @@ public class OrderServiceImpl implements OrderService {
     private final VoucherRepo voucherRepo;
     private final OrderMapper orderMapper;
     private final InvoiceMapper invoiceMapper;
+    private final CartItemService cartItemService;
 
-    /**
-     * Tạo đơn hàng mới
-     * - Chỉ nhân viên (STAFF) mới được tạo đơn
-     * - Kiểm tra giá từ DB để chống gian lận
-     * - Tính toán lại tổng tiền với voucher (nếu có)
-     */
+
     @Override
     public OrderResp createOrder(CreateOrderReq request) {
-        // Validate request
-        if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new InvalidInputException("Đơn hàng phải có ít nhất 1 sản phẩm");
-        }
 
-        if (request.getOrderType() == null) {
-            throw new InvalidInputException("Loại đơn hàng không được để trống");
-        }
-
-        if (request.getPaymentMethod() == null) {
-            throw new InvalidInputException("Phương thức thanh toán không được để trống");
-        }
-
-        // Validate bàn khi đặt tại quầy
-        if (request.getOrderType() == OrderType.AT_COUNTER &&
-            (request.getTableNumber() == null || request.getTableNumber().trim().isEmpty())) {
-            throw new InvalidInputException("Vui lòng chọn số bàn");
-        }
 
         // Tính tổng tiền và tạo order items
-        long subtotal = 0;
-        List<OrderItemEntity> orderItems = new java.util.ArrayList<>();
-
-        for (OrderItemReq itemReq : request.getItems()) {
-            // Kiểm tra product_size_id tồn tại và lấy giá từ DB
-            ProductSizeEntity productSize = productSizeRepo.findById(itemReq.getProductSizeId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy kích thước sản phẩm với ID: " + itemReq.getProductSizeId()));
-
-            // ✅ Kiểm tra giá: so sánh giá từ client và DB
-            // Nếu khác > 5% thì cảnh báo (tuỳ chỉnh ngưỡng)
-            long dbPrice = productSize.getPrice();
-            long clientPrice = itemReq.getPrice();
-            double priceDiffPercent = Math.abs((double) (dbPrice - clientPrice) / dbPrice) * 100;
-
-            if (priceDiffPercent > 5) {
-                throw new InvalidInputException(
-                        String.format("Giá sản phẩm không hợp lệ. Giá DB: %d, Giá client: %d", dbPrice, clientPrice));
-            }
-
-            // Sử dụng giá từ DB (nguồn sự thật)
-            long priceToUse = dbPrice;
-            subtotal += priceToUse * itemReq.getQuantity();
-
-            OrderItemEntity orderItem = OrderItemEntity.builder()
-                    .productSizeId(itemReq.getProductSizeId())
-                    .quantity(itemReq.getQuantity())
-                    .priceAtPurchase(priceToUse)
-                    .note(itemReq.getNote())
-                    .build();
-
-            orderItems.add(orderItem);
-        }
-
-        // Tính giảm giá voucher (nếu có)
-        long voucherDiscount = 0;
-        if (request.getVoucherId() != null && request.getVoucherId() > 0) {
-            VoucherEntity voucher = voucherRepo.findById(request.getVoucherId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy voucher với ID: " + request.getVoucherId()));
-
-            // Kiểm tra voucher có hợp lệ không
-            if (!voucher.getIsActive()) {
-                throw new InvalidInputException("Voucher không còn hoạt động");
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
-                throw new InvalidInputException("Voucher chưa có hiệu lực");
-            }
-
-            if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
-                throw new InvalidInputException("Voucher đã hết hạn");
-            }
-
-            if (voucher.getQuantity() != null && voucher.getUsedCount() >= voucher.getQuantity()) {
-                throw new InvalidInputException("Voucher đã hết số lượng");
-            }
-
-            // Kiểm tra giá tối thiểu
-            if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
-                throw new InvalidInputException(
-                        String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
-            }
-
-            // Tính giảm giá
-            if (DiscountType.FIXED == voucher.getDiscountType()) {
-                voucherDiscount = voucher.getDiscountValue().longValue();
-            } else {
-                // PERCENT
-                voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
-            }
-
-            // Áp dụng giảm giá tối đa
-            if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
-                voucherDiscount = voucher.getMaxDiscountValue().longValue();
-            }
-
-            // Giảm giá không quá tổng tiền
-            voucherDiscount = Math.min(voucherDiscount, subtotal);
-        }
-
-        long totalAmount = Math.max(0, subtotal - voucherDiscount);
+        Long subtotal =  request.getItems().stream()
+                .mapToLong(item -> ( item.getPrice()) * (item.getQuantity()))
+                .sum();
 
         // Tạo Order entity
         String orderCode = generateOrderCode();
@@ -175,7 +76,7 @@ public class OrderServiceImpl implements OrderService {
                 .paymentStatus(PaymentStatus.UNPAID)
                 .paymentMethod(request.getPaymentMethod())
                 .tableNumber(request.getTableNumber())
-                .totalAmount(totalAmount)
+                .totalAmount(subtotal)
                 .shippingAddress(request.getShippingAddress())
                 .receiverName(request.getReceiverName())
                 .receiverPhone(request.getReceiverPhone())
@@ -185,12 +86,28 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         OrderEntity savedOrder = orderRepo.save(order);
+        List<OrderItemEntity> orderItems = new ArrayList<>();
 
-        // Lưu order items
-        for (OrderItemEntity item : orderItems) {
-            item.setOrderId(savedOrder.getId());
-            orderItemRepo.save(item);
+        for (OrderItemReq itemReq : request.getItems()) {
+
+            subtotal += itemReq.getPrice() * itemReq.getQuantity();
+
+            OrderItemEntity orderItem = OrderItemEntity.builder()
+                    .orderId(order.getId())
+                    .productSizeId(itemReq.getProductSizeId())
+                    .quantity(itemReq.getQuantity())
+                    .priceAtPurchase(itemReq.getPrice())
+                    .note(itemReq.getNote())
+                    .build();
+
+            orderItems.add(orderItem);
         }
+
+       // luu order items
+       orderItemRepo.saveAll(orderItems);
+
+       // Xóa giỏ hàng sau khi tạo order thành công
+       cartItemService.clearCart();
 
         return mapOrderToResp(savedOrder, orderItems);
     }
@@ -347,6 +264,9 @@ public class OrderServiceImpl implements OrderService {
             item.setOrderId(savedOrder.getId());
             orderItemRepo.save(item);
         }
+
+        // Xóa giỏ hàng sau khi tạo order thành công
+        cartItemService.clearCart();
 
         return mapOrderToResp(savedOrder, orderItems);
     }
