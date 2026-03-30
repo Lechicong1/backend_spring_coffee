@@ -1,6 +1,7 @@
 package com.example.COFFEEHOUSE.DTO.Request;
 
 import com.example.COFFEEHOUSE.Enums.OrderStatus;
+import com.example.COFFEEHOUSE.Enums.OrderType;
 import com.example.COFFEEHOUSE.Enums.PaymentMethod;
 import com.example.COFFEEHOUSE.Enums.PaymentStatus;
 import lombok.Getter;
@@ -10,6 +11,7 @@ import lombok.Setter;
 @Setter
 public class UpdateOrderReq {
     private OrderStatus status;
+    private OrderType orderType;
     private PaymentStatus paymentStatus;
     private PaymentMethod paymentMethod;
     private String tableNumber;

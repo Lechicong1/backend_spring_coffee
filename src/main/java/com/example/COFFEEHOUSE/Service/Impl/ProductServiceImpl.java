@@ -84,10 +84,23 @@ public class ProductServiceImpl implements ProductService {
         return mapToResponse(entity);
     }
 
+    @Override
+    public List<ProductResp> search(String keyword, Long categoryId) {
+        String searchKey = keyword == null ? "" : keyword.trim();
+        List<ProductEntity> entities;
+        if (categoryId != null) {
+            entities = productRepo.findByCategoryIdAndNameContainingIgnoreCase(categoryId, searchKey);
+        } else {
+            entities = productRepo.findByNameContainingIgnoreCase(searchKey);
+        }
+        return entities.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     private ProductResp mapToResponse(ProductEntity entity) {
         ProductResp resp = productMapper.toDTO(entity);
         resp.setSizes(productSizeService.getSizesByProductId(entity.getId()));
         return resp;
     }
 }
-

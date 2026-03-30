@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -65,6 +66,19 @@ public class ProductController {
                 .success(true)
                 .message("Products retrieved successfully")
                 .data(productService.findAll())
+                .build());
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> search(
+            @RequestParam("q") String keyword,
+            @RequestParam(value = "categoryId", required = false) Long categoryId) {
+        var products = productService.search(keyword, categoryId);
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Products retrieved successfully")
+                .data(products)
                 .build());
     }
 }

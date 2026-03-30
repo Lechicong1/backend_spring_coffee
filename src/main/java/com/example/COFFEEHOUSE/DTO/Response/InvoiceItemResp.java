@@ -9,13 +9,14 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderItemResp {
-    private Long id;
+public class InvoiceItemResp {
+    private Long orderItemId;
     private Long productSizeId;
-    private Integer quantity;
-    private Long priceAtPurchase;
-    private String note;
     private String productName;
     private String sizeName;
-    private Long lineTotal; // quantity * priceAtPurchase for detail view
+    private Integer quantity;
+    private Long unitPrice;
+    private Long lineTotal;
+    private String note;
 }
+

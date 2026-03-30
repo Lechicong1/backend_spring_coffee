@@ -12,5 +12,5 @@ public interface ProductService {
     void deleteProduct(Long id);
     List<ProductResp> findAll();
     ProductResp findById(Long id);
+    List<ProductResp> search(String keyword, Long categoryId);
 }
-
