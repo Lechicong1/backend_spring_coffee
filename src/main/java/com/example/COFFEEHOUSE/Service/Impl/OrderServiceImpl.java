@@ -60,11 +60,61 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResp createOrder(CreateOrderReq request) {
 
-
-        // Tính tổng tiền và tạo order items
+        // Tính tổng tiền
         Long subtotal =  request.getItems().stream()
                 .mapToLong(item -> ( item.getPrice()) * (item.getQuantity()))
                 .sum();
+
+        long totalAmount = subtotal;
+
+        // Tính giảm giá voucher (nếu có)
+        long voucherDiscount = 0;
+        if (request.getVoucherId() != null && request.getVoucherId() > 0) {
+            VoucherEntity voucher = voucherRepo.findById(request.getVoucherId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy voucher với ID: " + request.getVoucherId()));
+
+            // Kiểm tra voucher có hợp lệ không
+            if (!voucher.getIsActive()) {
+                throw new InvalidInputException("Voucher không còn hoạt động");
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
+                throw new InvalidInputException("Voucher chưa có hiệu lực");
+            }
+            if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
+                throw new InvalidInputException("Voucher đã hết hạn");
+            }
+            if (voucher.getQuantity() != null && voucher.getQuantity() <= 0) {
+                throw new InvalidInputException("Voucher đã hết số lượng");
+            }
+            if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
+                throw new InvalidInputException(
+                        String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
+            }
+
+            // Tính giảm giá
+            if (DiscountType.FIXED == voucher.getDiscountType()) {
+                voucherDiscount = voucher.getDiscountValue().longValue();
+            } else {
+                voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
+            }
+            if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
+                voucherDiscount = voucher.getMaxDiscountValue().longValue();
+            }
+            voucherDiscount = Math.min(voucherDiscount, subtotal);
+
+            // Thu hồi 1 lượt dùng voucher (trừ số lượng)
+            voucher.setQuantity(voucher.getQuantity() - 1);
+            if (voucher.getUsedCount() != null) {
+                voucher.setUsedCount(voucher.getUsedCount() + 1);
+            } else {
+                voucher.setUsedCount(1);
+            }
+            voucherRepo.save(voucher);
+        }
+
+        totalAmount = Math.max(0, subtotal - voucherDiscount);
 
         // Tạo Order entity
         String orderCode = generateOrderCode();
@@ -76,7 +126,7 @@ public class OrderServiceImpl implements OrderService {
                 .paymentStatus(PaymentStatus.UNPAID)
                 .paymentMethod(request.getPaymentMethod())
                 .tableNumber(request.getTableNumber())
-                .totalAmount(subtotal)
+                .totalAmount(totalAmount)
                 .shippingAddress(request.getShippingAddress())
                 .receiverName(request.getReceiverName())
                 .receiverPhone(request.getReceiverPhone())
@@ -89,11 +139,8 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItemEntity> orderItems = new ArrayList<>();
 
         for (OrderItemReq itemReq : request.getItems()) {
-
-            subtotal += itemReq.getPrice() * itemReq.getQuantity();
-
             OrderItemEntity orderItem = OrderItemEntity.builder()
-                    .orderId(order.getId())
+                    .orderId(savedOrder.getId())
                     .productSizeId(itemReq.getProductSizeId())
                     .quantity(itemReq.getQuantity())
                     .priceAtPurchase(itemReq.getPrice())

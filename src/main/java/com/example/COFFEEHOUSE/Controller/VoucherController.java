@@ -61,4 +61,16 @@ public class VoucherController {
                 .data(voucherService.findAll())
                 .build());
     }
+
+    @GetMapping("/{id}/check")
+    public ResponseEntity<ResponseData> checkValid(
+            @PathVariable Long id, 
+            @RequestParam(required = false) Double billTotal) {
+        boolean isValid = voucherService.isValidVoucher(id, billTotal);
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message(isValid ? "Voucher hợp lệ" : "Voucher không hợp lệ hoặc không đủ điều kiện")
+                .data(isValid)
+                .build());
+    }
 }

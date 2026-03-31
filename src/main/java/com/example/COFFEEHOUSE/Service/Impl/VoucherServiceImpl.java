@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -57,5 +58,55 @@ public class VoucherServiceImpl implements VoucherService {
     @Override
     public List<VoucherResp> findAll() {
         return voucherMapper.toDTOList(voucherRepo.findAll());
+    }
+
+    @Override
+    public boolean isValidVoucher(Long id, Double billTotal) {
+        VoucherEntity entity = voucherRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found"));
+
+        if (entity.getIsActive() == null || !entity.getIsActive()) {
+            return false;
+        }
+
+        if (entity.getQuantity() != null && entity.getQuantity() <= 0) {
+            return false;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (entity.getStartDate() != null && now.isBefore(entity.getStartDate())) {
+            return false;
+        }
+        if (entity.getEndDate() != null && now.isAfter(entity.getEndDate())) {
+            return false;
+        }
+
+        if (entity.getMinBillTotal() != null && billTotal != null && billTotal < entity.getMinBillTotal()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void decreaseVoucherQuantity(Long id) {
+        VoucherEntity entity = voucherRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found"));
+
+        if (entity.getQuantity() != null) {
+            if (entity.getQuantity() <= 0) {
+                throw new RuntimeException("Voucher is out of stock");
+            }
+            entity.setQuantity(entity.getQuantity() - 1);
+        }
+
+        if (entity.getUsedCount() != null) {
+            entity.setUsedCount(entity.getUsedCount() + 1);
+        } else {
+            entity.setUsedCount(1);
+        }
+
+        voucherRepo.save(entity);
     }
 }

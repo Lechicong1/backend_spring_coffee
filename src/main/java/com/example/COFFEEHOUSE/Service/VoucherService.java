@@ -11,4 +11,6 @@ public interface VoucherService {
     void deleteVoucher(Long id);
     VoucherResp getVoucherById(Long id);
     List<VoucherResp> findAll();
+    boolean isValidVoucher(Long id, Double billTotal);
+    void decreaseVoucherQuantity(Long id);
 }
