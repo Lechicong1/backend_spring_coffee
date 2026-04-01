@@ -711,7 +711,7 @@ public class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toList());
     }
     @Override
-    public List<OrderResp> getOrderByStatusAndOrderType(String status, String orderType) {
+    public List<OrderResp> getOrderByStatusAndOrderType(String status, List<OrderType> orderType) {
         org.springframework.data.jpa.domain.Specification<OrderEntity> spec = org.springframework.data.jpa.domain.Specification.where(null);
 
         if (status != null && !status.trim().isEmpty()) {
@@ -723,22 +723,23 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        if (orderType != null && !orderType.trim().isEmpty()) {
-            try {
-                OrderType typeEnum = OrderType.valueOf(orderType.trim().toUpperCase());
-                spec = spec.and((root, query, cb) -> cb.equal(root.get("orderType"), typeEnum));
-            } catch (IllegalArgumentException ex) {
-                throw new InvalidInputException("Loại đơn hàng không hợp lệ: " + orderType);
-            }
+        if (orderType != null && !orderType.isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("orderType").in(orderType));
         }
 
-        List<OrderEntity> orders = orderRepo.findAll(spec);
+        // TỐI ƯU ALGORITHM: Yêu cầu DB sắp xếp giảm dần (DESC) theo thời gian tạo
+        // Lưu ý: Đảm bảo trong OrderEntity của bạn có thuộc tính tên là "createdAt"
+        org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"
+        );
+
+        // Truyền thêm đối tượng sort vào hàm findAll
+        List<OrderEntity> orders = orderRepo.findAll(spec, sort);
 
         List<OrderResp> responses = new ArrayList<>();
 
         for (OrderEntity order : orders) {
             List<OrderItemEntity> items = orderItemRepo.findByOrderId(order.getId());
-
             responses.add(mapOrderToResp(order, items));
         }
 
