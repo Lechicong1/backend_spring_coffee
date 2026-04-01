@@ -295,7 +295,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(request.getUserId())
                 .orderType(orderType)
                 .status(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
+                .paymentStatus(PaymentStatus.PAID)
                 .paymentMethod(paymentMethod)
                 .tableNumber(request.getTableNumber())
                 .totalAmount(totalAmount)
