@@ -3,15 +3,19 @@ package com.example.COFFEEHOUSE.Service.Impl;
 import com.example.COFFEEHOUSE.DTO.Mapper.VoucherMapper;
 import com.example.COFFEEHOUSE.DTO.Request.VoucherReq;
 import com.example.COFFEEHOUSE.DTO.Response.VoucherResp;
+import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Entity.VoucherEntity;
+import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
 import com.example.COFFEEHOUSE.Service.VoucherService;
+import com.example.COFFEEHOUSE.Utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepo voucherRepo;
     private final VoucherMapper voucherMapper;
+    private final UserRepo userRepo;
 
     @Override
     @Transactional
@@ -108,5 +113,37 @@ public class VoucherServiceImpl implements VoucherService {
         }
 
         voucherRepo.save(entity);
+    }
+
+    @Override
+    public List<VoucherResp> getVouchersByUserPoints() {
+        // Get current user ID from JWT token
+        Long userId = CommonUtils.getIdUserFromToken();
+        
+        // Get user information
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Get current user points
+        Long userPoints = user.getPoints() != null ? user.getPoints() : 0L;
+        
+        // Get all active vouchers that user can afford based on points
+        List<VoucherEntity> availableVouchers = voucherRepo.findAll().stream()
+                .filter(voucher -> voucher.getIsActive() != null && voucher.getIsActive())
+                .filter(voucher -> voucher.getPointCost() != null && voucher.getPointCost() <= userPoints)
+                .filter(voucher -> voucher.getQuantity() != null && voucher.getQuantity() > 0)
+                .filter(voucher -> {
+                    LocalDateTime now = LocalDateTime.now();
+                    if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
+                        return false;
+                    }
+                    if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+        
+        return voucherMapper.toDTOList(availableVouchers);
     }
 }
