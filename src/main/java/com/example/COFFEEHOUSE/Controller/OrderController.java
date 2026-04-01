@@ -219,4 +219,18 @@ public class OrderController {
                 .data(itemResp)
                 .build());
     }
+
+    /**
+     * GET /orders/me - Lấy danh sách đơn hàng của tài khoản đang đăng nhập
+     */
+    @GetMapping("/myOrder")
+    public ResponseEntity<ResponseData> getMyOrders() {
+        var orders = orderService.getOrdersByCurrentUserJWT();
+
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message(MSG_LIST)
+                .data(orders)
+                .build());
+    }
 }

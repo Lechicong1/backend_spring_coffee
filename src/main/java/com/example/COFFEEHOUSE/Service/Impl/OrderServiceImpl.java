@@ -31,6 +31,9 @@ import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
 import com.example.COFFEEHOUSE.Service.CartItemService;
 import com.example.COFFEEHOUSE.Service.OrderService;
+
+import com.example.COFFEEHOUSE.Utils.CommonUtils;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -692,4 +695,20 @@ public class OrderServiceImpl implements OrderService {
                 .lineTotal(saved.getPriceAtPurchase() * saved.getQuantity())
                 .build();
     }
+
+    // Lấy đơn hàng của user hiện tại dựa trên JWT
+    @Override
+    public List<OrderResp> getOrdersByCurrentUserJWT() {
+        Long userId = CommonUtils.getIdUserFromToken();
+
+        List<OrderEntity> orders = orderRepo.findByUserId(userId);
+
+        return orders.stream()
+                .map(order -> {
+                    List<OrderItemEntity> items = orderItemRepo.findByOrderId(order.getId());
+                    return mapOrderToResp(order, items);
+                })
+                .collect(Collectors.toList());
+    }
+
 }
