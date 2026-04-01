@@ -233,4 +233,17 @@ public class OrderController {
                 .data(orders)
                 .build());
     }
+    @GetMapping("/getOrders")
+    public ResponseEntity<ResponseData> getOrderByStatusAndOrderType(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String orderType) {
+
+        var orders = orderService.getOrderByStatusAndOrderType(status, orderType);
+
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Lọc danh sách đơn hàng thành công")
+                .data(orders)
+                .build());
+    }
 }

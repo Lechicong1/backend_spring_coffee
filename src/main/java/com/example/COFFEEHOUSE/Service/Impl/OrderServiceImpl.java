@@ -710,5 +710,38 @@ public class OrderServiceImpl implements OrderService {
                 })
                 .collect(Collectors.toList());
     }
+    @Override
+    public List<OrderResp> getOrderByStatusAndOrderType(String status, String orderType) {
+        org.springframework.data.jpa.domain.Specification<OrderEntity> spec = org.springframework.data.jpa.domain.Specification.where(null);
 
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                OrderStatus statusEnum = OrderStatus.valueOf(status.trim().toUpperCase());
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), statusEnum));
+            } catch (IllegalArgumentException ex) {
+                throw new InvalidInputException("Trạng thái đơn hàng không hợp lệ: " + status);
+            }
+        }
+
+        if (orderType != null && !orderType.trim().isEmpty()) {
+            try {
+                OrderType typeEnum = OrderType.valueOf(orderType.trim().toUpperCase());
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("orderType"), typeEnum));
+            } catch (IllegalArgumentException ex) {
+                throw new InvalidInputException("Loại đơn hàng không hợp lệ: " + orderType);
+            }
+        }
+
+        List<OrderEntity> orders = orderRepo.findAll(spec);
+
+        List<OrderResp> responses = new ArrayList<>();
+
+        for (OrderEntity order : orders) {
+            List<OrderItemEntity> items = orderItemRepo.findByOrderId(order.getId());
+
+            responses.add(mapOrderToResp(order, items));
+        }
+
+        return responses;
+    }
 }

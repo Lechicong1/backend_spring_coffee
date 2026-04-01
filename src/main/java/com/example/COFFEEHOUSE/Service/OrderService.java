@@ -8,6 +8,7 @@ import com.example.COFFEEHOUSE.DTO.Response.OrderResp;
 import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.DTO.Response.OrderDetailResp;
 import com.example.COFFEEHOUSE.DTO.Response.OrderItemResp;
+import org.hibernate.query.Order;
 
 import java.util.List;
 
@@ -24,7 +25,7 @@ public interface OrderService {
     InvoiceResp getInvoiceByCode(String orderCode);
     OrderDetailResp getOrderDetail(Long orderId);
     OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request);
-
+    List<OrderResp> getOrderByStatusAndOrderType(String status, String orderType);
     List<OrderResp> getOrdersByCurrentUserJWT();
 
 }
