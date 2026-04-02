@@ -73,4 +73,13 @@ public class VoucherController {
                 .data(isValid)
                 .build());
     }
+
+    @GetMapping("/my-vouchers/available")
+    public ResponseEntity<ResponseData> getMyAvailableVouchers() {
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Available vouchers retrieved successfully")
+                .data(voucherService.getVouchersByUserPoints())
+                .build());
+    }
 }
