@@ -71,7 +71,7 @@ public class OrderController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF', 'SHIPPER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF', 'SHIPPER', 'BARISTA')")
     public ResponseEntity<ResponseData> updateOrder(
             @PathVariable Long id,
             @RequestBody UpdateOrderReq request) {
