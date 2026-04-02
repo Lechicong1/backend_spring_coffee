@@ -98,4 +98,15 @@ public class InventoryCheckController {
                 .data(inventoryCheckService.search(keyword))
                 .build());
     }
+
+    @GetMapping("/report/by-date-range")
+    public ResponseEntity<ResponseData> getLossReportByDateRange(
+            @RequestParam(name = "from_date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(name = "to_date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Lấy báo cáo thất thoát theo khoảng ngày thành công")
+                .data(inventoryCheckService.getLossReportByDateRange(fromDate, toDate))
+                .build());
+    }
 }
