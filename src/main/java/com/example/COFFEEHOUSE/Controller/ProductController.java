@@ -70,7 +70,6 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> search(
             @RequestParam("q") String keyword,
             @RequestParam(value = "categoryId", required = false) Long categoryId) {
