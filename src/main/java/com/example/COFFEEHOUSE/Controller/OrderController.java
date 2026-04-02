@@ -6,6 +6,7 @@ import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
+import com.example.COFFEEHOUSE.Enums.OrderType;
 import com.example.COFFEEHOUSE.Service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
@@ -236,7 +239,7 @@ public class OrderController {
     @GetMapping("/getOrders")
     public ResponseEntity<ResponseData> getOrderByStatusAndOrderType(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String orderType) {
+            @RequestParam(required = false) List<OrderType> orderType) {
 
         var orders = orderService.getOrderByStatusAndOrderType(status, orderType);
 
