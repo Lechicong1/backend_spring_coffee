@@ -129,4 +129,72 @@ public class ProductReportServiceImpl implements ProductReportService {
         }
         return rows;
     }
+
+    @Override
+    public ResponseData getTotalRevenue(LocalDate startDate, LocalDate endDate, Long categoryId) {
+        try {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+            
+            Long revenue = productReportRepository.getTotalRevenue(startDateTime, endDateTime, categoryId);
+            
+            return ResponseData.builder()
+                    .success(true)
+                    .data(java.util.Map.of(
+                            "totalRevenue", revenue,
+                            "currency", "VND",
+                            "period", startDate + " to " + endDate
+                    ))
+                    .build();
+        } catch (Exception e) {
+            return ResponseData.builder()
+                    .success(false)
+                    .message("Error calculating revenue: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public ResponseData getInventoryExpense(LocalDate startDate, LocalDate endDate) {
+        try {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+            
+            Long expense = productReportRepository.getInventoryExpense(startDateTime, endDateTime);
+            
+            return ResponseData.builder()
+                    .success(true)
+                    .data(java.util.Map.of(
+                            "inventoryExpense", expense,
+                            "currency", "VND",
+                            "period", startDate + " to " + endDate
+                    ))
+                    .build();
+        } catch (Exception e) {
+            return ResponseData.builder()
+                    .success(false)
+                    .message("Error calculating inventory expense: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public ResponseData getSalaryExpense() {
+        try {
+            Long totalSalary = productReportRepository.getSalaryExpense();
+            
+            return ResponseData.builder()
+                    .success(true)
+                    .data(java.util.Map.of(
+                            "totalSalaryExpense", totalSalary,
+                            "currency", "VND"
+                    ))
+                    .build();
+        } catch (Exception e) {
+            return ResponseData.builder()
+                    .success(false)
+                    .message("Error calculating salary expense: " + e.getMessage())
+                    .build();
+        }
+    }
 }

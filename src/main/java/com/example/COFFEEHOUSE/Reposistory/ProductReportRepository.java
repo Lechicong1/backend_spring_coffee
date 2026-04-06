@@ -31,4 +31,24 @@ public interface ProductReportRepository extends JpaRepository<OrderItemEntity, 
             @Param("toDate") LocalDateTime toDate,
             @Param("categoryId") String categoryId,
             @Param("categoryIdLong") Long categoryIdLong);
+
+    @Query("SELECT COALESCE(SUM(oi.quantity * oi.priceAtPurchase), 0L) FROM OrderItemEntity oi "
+            + "JOIN OrderEntity o ON oi.orderId = o.id "
+            + "WHERE o.status = 'COMPLETED' "
+            + "AND o.createdAt BETWEEN :startDate AND :endDate "
+            + "AND (:categoryId IS NULL OR EXISTS (SELECT 1 FROM ProductSizeEntity ps JOIN ProductEntity p ON ps.productId = p.id "
+            + "WHERE ps.id = oi.productSizeId AND p.categoryId = :categoryId))")
+    Long getTotalRevenue(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("categoryId") Long categoryId);
+
+    @Query("SELECT COALESCE(SUM(ii.totalCost), 0L) FROM InventoryImportEntity ii "
+            + "WHERE ii.importDate BETWEEN :startDate AND :endDate")
+    Long getInventoryExpense(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COALESCE(SUM(e.salary), 0L) FROM EmployeeEntity e")
+    Long getSalaryExpense();
 }
