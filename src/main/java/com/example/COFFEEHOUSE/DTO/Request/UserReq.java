@@ -1,6 +1,7 @@
 package com.example.COFFEEHOUSE.DTO.Request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,5 +18,7 @@ public class UserReq {
     private String address;
     private Long salary;
     private java.time.LocalDate hireDate;
-    private Long phone ;
+
+    @Pattern(regexp = "^(0|\\+84)\\d{9,10}$", message = "Phone number is invalid")
+    private String phone;
 }

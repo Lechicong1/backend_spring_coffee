@@ -16,5 +16,5 @@ public class EmployeeResp {
     private String roleName;
     private Long salary;
     private LocalDate hireDate;
-    private Long phone ;
+    private String phone;
 }

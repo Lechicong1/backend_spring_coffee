@@ -14,6 +14,7 @@ public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String username;
     private String password;
     private String email;
@@ -21,5 +22,7 @@ public class UserEntity {
     private String address;
     private Long roleId;
     private Long points;
-    private Long phoneNumber;
+
+    @Column(name = "phoneNumber", length = 20)
+    private String phoneNumber;
 }
