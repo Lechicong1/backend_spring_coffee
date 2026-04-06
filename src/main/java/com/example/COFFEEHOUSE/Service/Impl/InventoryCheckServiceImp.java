@@ -1,6 +1,5 @@
 package com.example.COFFEEHOUSE.Service.Impl;
 
-import com.example.COFFEEHOUSE.DTO.Mapper.InventoryCheckMapper;
 import com.example.COFFEEHOUSE.DTO.Request.InventoryCheckReq;
 import com.example.COFFEEHOUSE.DTO.Response.InventoryCheckResp;
 import com.example.COFFEEHOUSE.Entity.IngredientEntity;
@@ -31,7 +30,6 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
 
     private final InventoryCheckRepo inventoryCheckRepo;
     private final IngredientRepo ingredientRepo;
-    private final InventoryCheckMapper inventoryCheckMapper;
 
     @Override
     @Transactional
@@ -205,6 +203,38 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
         }
 
         return result;
+    }
+
+    @Override
+    public List<InventoryCheckResp> getLossReportByDateRange(LocalDate fromDate, LocalDate toDate) {
+        if (fromDate == null || toDate == null) {
+            throw new InvalidInputException("from_date và to_date là bắt buộc");
+        }
+
+        if (fromDate.isAfter(toDate)) {
+            throw new InvalidInputException("from_date không được lớn hơn to_date");
+        }
+
+        LocalDateTime fromDateTime = fromDate.atStartOfDay();
+        LocalDateTime toDateTimeExclusive = toDate.plusDays(1).atStartOfDay();
+
+        List<InventoryCheckRepo.InventoryCheckDateRangeProjection> rawData = inventoryCheckRepo
+                .getLossReportByDateRange(fromDateTime, toDateTimeExclusive);
+
+        return rawData.stream()
+                .map(item -> InventoryCheckResp.builder()
+                        .id(null)
+                        .ingredient(item.getIngredient())
+                        .unit(null)
+                        .theoryQuantity(item.getTotalTheory())
+                        .actualQuantity(item.getTotalActual())
+                        .difference(item.getTotalDifference())
+                        .percentDifference(null)
+                        .status(null)
+                        .note(null)
+                        .checkedAt(item.getCheckDate() != null ? item.getCheckDate().atStartOfDay() : null)
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**
