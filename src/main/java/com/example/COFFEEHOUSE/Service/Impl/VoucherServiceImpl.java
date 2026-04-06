@@ -146,4 +146,39 @@ public class VoucherServiceImpl implements VoucherService {
         
         return voucherMapper.toDTOList(availableVouchers);
     }
+
+    @Override
+    public List<VoucherResp> getVoucherByPhoneNumber(String phoneNumber) {
+        Long phoneLong;
+        try {
+            phoneLong = Long.parseLong(phoneNumber);
+        } catch (NumberFormatException e) {
+            throw new RuntimeException("Invalid phone number format");
+        }
+
+        UserEntity user = userRepo.findByPhoneNumber(phoneLong);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        Long userPoints = user.getPoints() != null ? user.getPoints() : 0L;
+
+        List<VoucherEntity> availableVouchers = voucherRepo.findAll().stream()
+                .filter(voucher -> voucher.getIsActive() != null && voucher.getIsActive())
+                .filter(voucher -> voucher.getPointCost() != null && voucher.getPointCost() <= userPoints)
+                .filter(voucher -> voucher.getQuantity() != null && voucher.getQuantity() > 0)
+                .filter(voucher -> {
+                    LocalDateTime now = LocalDateTime.now();
+                    if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
+                        return false;
+                    }
+                    if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+        
+        return voucherMapper.toDTOList(availableVouchers);
+    }
 }
