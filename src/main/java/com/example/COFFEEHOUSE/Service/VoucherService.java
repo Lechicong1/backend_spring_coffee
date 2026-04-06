@@ -14,4 +14,5 @@ public interface VoucherService {
     boolean isValidVoucher(Long id, Double billTotal);
     void decreaseVoucherQuantity(Long id);
     List<VoucherResp> getVouchersByUserPoints();
+    List<VoucherResp> getVoucherByPhoneNumber(String phoneNumber);
 }

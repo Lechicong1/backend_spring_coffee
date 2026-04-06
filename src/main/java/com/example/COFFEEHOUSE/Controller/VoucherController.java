@@ -82,4 +82,13 @@ public class VoucherController {
                 .data(voucherService.getVouchersByUserPoints())
                 .build());
     }
+
+    @GetMapping("/phone/{phoneNumber}")
+    public ResponseEntity<ResponseData> getVouchersByPhone(@PathVariable String phoneNumber) {
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Vouchers retrieved successfully")
+                .data(voucherService.getVoucherByPhoneNumber(phoneNumber))
+                .build());
+    }
 }
