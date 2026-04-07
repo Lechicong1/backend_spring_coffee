@@ -149,14 +149,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     @Override
     public List<VoucherResp> getVoucherByPhoneNumber(String phoneNumber) {
-        Long phoneLong;
-        try {
-            phoneLong = Long.parseLong(phoneNumber);
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("Invalid phone number format");
-        }
-
-        UserEntity user = userRepo.findByPhoneNumber(phoneLong);
+        UserEntity user = userRepo.findByPhoneNumber(phoneNumber.trim());
         if (user == null) {
             throw new RuntimeException("User not found");
         }

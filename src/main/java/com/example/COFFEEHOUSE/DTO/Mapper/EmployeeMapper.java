@@ -25,4 +25,3 @@ public interface EmployeeMapper {
     @Mapping(target = "phone", source = "user.phoneNumber")
     EmployeeResp toDTO(UserEntity user, EmployeeEntity employee, RoleEntity role);
 }
-
