@@ -364,9 +364,15 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
+        OrderStatus oldStatus = order.getStatus();
+
         // Cập nhật các trường được phép
         if (request.getStatus() != null) {
             order.setStatus(request.getStatus());
+
+            if (oldStatus != OrderStatus.COMPLETED && request.getStatus() == OrderStatus.COMPLETED) {
+                addPointsToUser(order.getUserId(), order.getTotalAmount(), order.getOrderType());
+            }
         }
 
         if (request.getPaymentStatus() != null) {
@@ -775,5 +781,22 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return responses;
+    }
+
+    /**
+     * Hàm cộng điểm cho user khi order hoàn thành
+     * 10000 VNĐ = 1 điểm
+     */
+    private void addPointsToUser(Long userId, Long totalAmount, OrderType orderType) {
+        if (userId == null || totalAmount == null) return;
+
+        if (orderType == OrderType.DELIVERY || orderType == OrderType.AT_COUNTER || orderType == OrderType.TAKEAWAY) {
+            userRepo.findById(userId).ifPresent(user -> {
+                Long pointsToAdd = totalAmount / 10000;
+                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
+                user.setPoints(currentPoints + pointsToAdd);
+                userRepo.save(user);
+            });
+        }
     }
 }
