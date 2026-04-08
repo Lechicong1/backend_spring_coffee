@@ -36,6 +36,7 @@ import com.example.COFFEEHOUSE.Service.OrderService;
 
 import com.example.COFFEEHOUSE.Utils.CommonUtils;
 
+import com.example.COFFEEHOUSE.Utils.VietQrUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -211,7 +212,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(request.getUserId())
                 .orderType(orderType)
                 .status(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.PAID)
+                .paymentStatus(PaymentStatus.UNPAID)
                 .paymentMethod(paymentMethod)
                 .tableNumber(request.getTableNumber())
                 .totalAmount(totalAmount)
@@ -682,6 +683,30 @@ public class OrderServiceImpl implements OrderService {
                 user.setPoints(currentPoints + pointsToAdd);
                 userRepo.save(user);
             });
+        }
+    }
+    /**
+     * Xử lý Webhook VietQR: Đọc nội dung, tìm mã đơn, cập nhật trạng thái
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleVietQrWebhook(String description, Integer amount) {
+        String orderCode = VietQrUtils.extractOrderCode(description);
+
+        if (orderCode != null) {
+            OrderEntity order = orderRepo.findByOrderCode(orderCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với code: " + orderCode));
+
+            // Kiểm tra số tiền và trạng thái thanh toán
+            if (amount >= order.getTotalAmount() && order.getPaymentStatus() != PaymentStatus.PAID) {
+                order.setPaymentStatus(PaymentStatus.PAID);
+                order.setStatus(OrderStatus.PENDING);
+                orderRepo.save(order);
+
+                // TODO: Gọi hàm trừ kho nguyên liệu (Deduct Stock) tại đây
+            }
+        } else {
+            throw new InvalidInputException("Nội dung chuyển khoản không chứa mã đơn hàng hợp lệ");
         }
     }
 }

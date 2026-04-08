@@ -27,5 +27,6 @@ public interface OrderService {
     OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request);
     List<OrderResp> getOrderByStatusAndOrderType(String status, List<OrderType> orderType);
     List<OrderResp> getOrdersByCurrentUserJWT();
+    void handleVietQrWebhook(String description, Integer amount);
 
 }

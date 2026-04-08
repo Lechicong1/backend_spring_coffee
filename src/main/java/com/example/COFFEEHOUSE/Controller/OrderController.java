@@ -33,7 +33,6 @@ public class OrderController {
     private final CheckoutService checkoutService;
         private final VnpayProperties vnpayProperties;
 
-    // Reusable response messages (reduce duplicated literals)
     private static final String MSG_CREATED = "Đơn hàng được tạo thành công";
     private static final String MSG_UPDATED = "Đơn hàng được cập nhật thành công";
     private static final String MSG_DETAIL = "Lấy chi tiết đơn hàng thành công";
@@ -77,7 +76,23 @@ public class OrderController {
 
         return new RedirectView(redirectUrl);
     }
+    /**
+     * POST /orders/webhook/vietqr
+     * API nhận thông báo chuyển khoản giả lập từ Postman
+     */
+    @PostMapping("/webhook/vietqr")
+    public ResponseEntity<ResponseData> handleMockPaymentWebhook(@RequestBody Map<String, Object> payload) {
+        String description = (String) payload.get("description");
+        Integer amount = (Integer) payload.get("amount");
 
+        // Gọi Service xử lý logic
+        orderService.handleVietQrWebhook(description, amount);
+
+        return ResponseEntity.ok(ResponseData.builder()
+                .success(true)
+                .message("Xử lý Webhook VietQR thành công")
+                .build());
+    }
     /**
      * POST /orders/from-cart - Tạo đơn hàng từ cart (dùng cho POS)
      * Chỉ STAFF/ADMIN mới được tạo
@@ -288,4 +303,6 @@ public class OrderController {
                 }
                 return request.getRemoteAddr();
         }
+
+
 }
