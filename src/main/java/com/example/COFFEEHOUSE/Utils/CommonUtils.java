@@ -20,5 +20,13 @@ public class CommonUtils {
         int randomNum = 10000 + random.nextInt(90000);
         return "ORD" + randomNum;
     }
+    public static float getMultiplierBySize(String sizeName) {
+        return (float) switch (sizeName.toUpperCase()) {
+            case "M" -> 1;
+            case "L" -> 1.2;
+            case "XL" -> 1.5;
+            default -> throw new IllegalArgumentException("Kích thước không hợp lệ: " + sizeName);
+        };
+    }
 
 }
