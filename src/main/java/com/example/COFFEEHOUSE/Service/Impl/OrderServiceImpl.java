@@ -204,7 +204,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         long totalAmount = Math.max(0, subtotal - voucherDiscount);
-
+        PaymentStatus initialPaymentStatus = (paymentMethod == PaymentMethod.CASH)
+                ? PaymentStatus.PAID
+                : PaymentStatus.UNPAID;
         // Tạo Order entity
         String orderCode = generateOrderCode();
         OrderEntity order = OrderEntity.builder()
@@ -212,7 +214,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(request.getUserId())
                 .orderType(orderType)
                 .status(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
+                .paymentStatus(initialPaymentStatus)
                 .paymentMethod(paymentMethod)
                 .tableNumber(request.getTableNumber())
                 .totalAmount(totalAmount)
