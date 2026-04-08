@@ -168,7 +168,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         orderItemRepo.saveAll(orderItems);
     }
 
-    private void validateStockOrderItem(OrderItemReq item) {
+    public void validateStockOrderItem(OrderItemReq item) {
         float multiplier = CommonUtils.getMultiplierBySize(item.getSizeName());
         ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm size này"));

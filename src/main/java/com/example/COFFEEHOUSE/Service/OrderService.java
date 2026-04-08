@@ -14,7 +14,6 @@ import org.hibernate.query.Order;
 import java.util.List;
 
 public interface OrderService {
-    OrderResp createOrder(CreateOrderReq request);
     OrderResp createOrderFromCart(CreateOrderFromCartReq request);
     OrderResp updateOrder(Long orderId, UpdateOrderReq request);
     OrderResp getOrderById(Long orderId);
