@@ -15,4 +15,6 @@ public interface VoucherService {
     void decreaseVoucherQuantity(Long id);
     List<VoucherResp> getVouchersByUserPoints();
     List<VoucherResp> getVoucherByPhoneNumber(String phoneNumber);
+    void validateAndUseVoucher(Long voucherId, Long userId, Long subtotal);
+    long calculateDiscount(Long voucherId, Long subtotal);
 }
