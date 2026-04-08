@@ -15,6 +15,7 @@ import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.Entity.OrderEntity;
 import com.example.COFFEEHOUSE.Entity.OrderItemEntity;
 import com.example.COFFEEHOUSE.Entity.ProductSizeEntity;
+import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Entity.VoucherEntity;
 import com.example.COFFEEHOUSE.Enums.DiscountType;
 import com.example.COFFEEHOUSE.Enums.OrderStatus;
@@ -94,6 +95,21 @@ public class OrderServiceImpl implements OrderService {
             if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
                 throw new InvalidInputException(
                         String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
+            }
+
+            // Kiểm tra và trừ điểm của user
+            if (voucher.getPointCost() != null && voucher.getPointCost() > 0) {
+                if (request.getUserId() == null) {
+                    throw new InvalidInputException("Vui lòng đăng nhập để sử dụng voucher này");
+                }
+                UserEntity user = userRepo.findById(request.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với ID: " + request.getUserId()));
+                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
+                if (currentPoints < voucher.getPointCost()) {
+                    throw new InvalidInputException("Bạn không đủ điểm để sử dụng voucher này");
+                }
+                user.setPoints(currentPoints - voucher.getPointCost());
+                userRepo.save(user);
             }
 
             // Tính giảm giá
@@ -269,6 +285,21 @@ public class OrderServiceImpl implements OrderService {
                         String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
             }
 
+            // Kiểm tra và trừ điểm của user
+            if (voucher.getPointCost() != null && voucher.getPointCost() > 0) {
+                if (request.getUserId() == null) {
+                    throw new InvalidInputException("Vui lòng đăng nhập để sử dụng voucher này");
+                }
+                UserEntity user = userRepo.findById(request.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với ID: " + request.getUserId()));
+                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
+                if (currentPoints < voucher.getPointCost()) {
+                    throw new InvalidInputException("Bạn không đủ điểm để sử dụng voucher này");
+                }
+                user.setPoints(currentPoints - voucher.getPointCost());
+                userRepo.save(user);
+            }
+
             // Tính giảm giá
             if (DiscountType.FIXED == voucher.getDiscountType()) {
                 voucherDiscount = voucher.getDiscountValue().longValue();
@@ -333,9 +364,15 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
+        OrderStatus oldStatus = order.getStatus();
+
         // Cập nhật các trường được phép
         if (request.getStatus() != null) {
             order.setStatus(request.getStatus());
+
+            if (oldStatus != OrderStatus.COMPLETED && request.getStatus() == OrderStatus.COMPLETED) {
+                addPointsToUser(order.getUserId(), order.getTotalAmount(), order.getOrderType());
+            }
         }
 
         if (request.getPaymentStatus() != null) {
@@ -744,5 +781,22 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return responses;
+    }
+
+    /**
+     * Hàm cộng điểm cho user khi order hoàn thành
+     * 10000 VNĐ = 1 điểm
+     */
+    private void addPointsToUser(Long userId, Long totalAmount, OrderType orderType) {
+        if (userId == null || totalAmount == null) return;
+
+        if (orderType == OrderType.DELIVERY || orderType == OrderType.AT_COUNTER || orderType == OrderType.TAKEAWAY) {
+            userRepo.findById(userId).ifPresent(user -> {
+                Long pointsToAdd = totalAmount / 10000;
+                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
+                user.setPoints(currentPoints + pointsToAdd);
+                userRepo.save(user);
+            });
+        }
     }
 }

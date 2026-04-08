@@ -70,7 +70,8 @@ public class SecurityFilterChain {
         return http.build();
     }
 
-    private String allowOrigin="http://127.0.0.1:5504";
+    private String allowOrigin="http://127.0.0.1:5500";
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
