@@ -18,7 +18,5 @@ public class UserReq {
     private String address;
     private Long salary;
     private java.time.LocalDate hireDate;
-
-    @Pattern(regexp = "^(0|\\+84)\\d{9,10}$", message = "Phone number is invalid")
-    private String phone;
+    private String phoneNumber ;
 }
