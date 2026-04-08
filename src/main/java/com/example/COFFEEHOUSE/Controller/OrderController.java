@@ -7,6 +7,7 @@ import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
 import com.example.COFFEEHOUSE.Enums.OrderType;
+import com.example.COFFEEHOUSE.Service.CheckoutService;
 import com.example.COFFEEHOUSE.Service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final CheckoutService checkoutService;
 
     // Reusable response messages (reduce duplicated literals)
     private static final String MSG_CREATED = "Đơn hàng được tạo thành công";
@@ -41,13 +43,12 @@ public class OrderController {
     public ResponseEntity<ResponseData> createOrder(
             @Valid @RequestBody CreateOrderReq request) {
 
-        var orderResp = orderService.createOrder(request);
+       checkoutService.createOrderFromCart(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.builder()
                         .success(true)
                         .message(MSG_CREATED)
-                        .data(orderResp)
                         .build());
     }
 

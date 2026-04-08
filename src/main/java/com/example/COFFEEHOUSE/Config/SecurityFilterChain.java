@@ -75,16 +75,26 @@ public class SecurityFilterChain {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // ✅ Parse multiple origins từ comma-separated string
-        String[] origins = allowOrigin.split(",");
-        config.setAllowedOrigins(List.of(origins));
+//        config.addAllowedOrigin("https://demo.production.io.vn");
+//        config.addAllowedOrigin("http://demo.production.io.vn");
+        // Danh sách origin cho phép
+//        config.setAllowedOrigins(List.of(
+//                "https://demo.production.io.vn",
+//                "http://demo.production.io.vn",
+//                "https://hphls.production.io.vn",
+//                "https://hphls.production.io.vn:8443",
+//                "http://hphls.production.io.vn:8686",
+//                "http://127.0.0.1:5500",
+//                env.getProperty("web_base_url","http://127.0.0.1:5500")
+//        ));
+        config.setAllowedOriginPatterns(List.of("*"));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(List.of("*"));
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
         config.setAllowCredentials(true);
-        config.setExposedHeaders(List.of("*")); // ✅ Quan trọng cho SSE
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
 
-        System.out.println("✅ CORS config đã được apply cho origins: " + allowOrigin);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

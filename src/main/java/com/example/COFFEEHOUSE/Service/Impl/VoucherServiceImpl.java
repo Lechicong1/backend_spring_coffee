@@ -5,6 +5,9 @@ import com.example.COFFEEHOUSE.DTO.Request.VoucherReq;
 import com.example.COFFEEHOUSE.DTO.Response.VoucherResp;
 import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Entity.VoucherEntity;
+import com.example.COFFEEHOUSE.Enums.DiscountType;
+import com.example.COFFEEHOUSE.Exception.InvalidInputException;
+import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
 import com.example.COFFEEHOUSE.Service.VoucherService;
@@ -173,5 +176,70 @@ public class VoucherServiceImpl implements VoucherService {
                 .collect(Collectors.toList());
         
         return voucherMapper.toDTOList(availableVouchers);
+    }
+
+    @Override
+    @Transactional
+    public void validateAndUseVoucher(Long voucherId, Long userId, Long subtotal) {
+        if (voucherId == null || voucherId <= 0) return;
+
+        VoucherEntity voucher = voucherRepo.findById(voucherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy voucher với ID: " + voucherId));
+
+        if (!voucher.getIsActive()) {
+            throw new InvalidInputException("Voucher không còn hoạt động");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
+            throw new InvalidInputException("Voucher chưa có hiệu lực");
+        }
+        if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
+            throw new InvalidInputException("Voucher đã hết hạn");
+        }
+        if (voucher.getQuantity() != null && voucher.getQuantity() <= 0) {
+            throw new InvalidInputException("Voucher đã hết số lượng");
+        }
+        if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
+            throw new InvalidInputException(
+                    String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
+        }
+
+        if (voucher.getPointCost() != null && voucher.getPointCost() > 0) {
+            if (userId == null) {
+                throw new InvalidInputException("Vui lòng đăng nhập để sử dụng voucher này");
+            }
+            UserEntity user = userRepo.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với ID: " + userId));
+            Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
+            if (currentPoints < voucher.getPointCost()) {
+                throw new InvalidInputException("Bạn không đủ điểm để sử dụng voucher này");
+            }
+            user.setPoints(currentPoints - voucher.getPointCost());
+            userRepo.save(user);
+        }
+
+        voucher.setQuantity(voucher.getQuantity() - 1);
+        voucher.setUsedCount((voucher.getUsedCount() != null ? voucher.getUsedCount() : 0) + 1);
+        voucherRepo.save(voucher);
+    }
+
+    @Override
+    public long calculateDiscount(Long voucherId, Long subtotal) {
+        if (voucherId == null || voucherId <= 0) return 0;
+
+        VoucherEntity voucher = voucherRepo.findById(voucherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy voucher với ID: " + voucherId));
+
+        long voucherDiscount;
+        if (DiscountType.FIXED == voucher.getDiscountType()) {
+            voucherDiscount = voucher.getDiscountValue().longValue();
+        } else {
+            voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
+        }
+
+        if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
+            voucherDiscount = voucher.getMaxDiscountValue().longValue();
+        }
+        return Math.min(voucherDiscount, subtotal);
     }
 }

@@ -10,5 +10,6 @@ public class OrderItemReq {
     private Integer quantity;
     private Long price;
     private String note;
+    private String sizeName;
 }
 
