@@ -1,6 +1,5 @@
 package com.example.COFFEEHOUSE.Service.Impl;
 
-
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.OrderItemReq;
 import com.example.COFFEEHOUSE.DTO.Response.CheckoutOrderResp;
@@ -50,9 +49,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         long voucherDiscount = voucherService.calculateDiscount(request.getVoucherId(), subtotal);
 
         long totalAmount = Math.max(0, subtotal - voucherDiscount);
-        for(OrderItemReq item : request.getItems()) {
+        for (OrderItemReq item : request.getItems()) {
             validateStockOrderItem(item);
         }
+
+        deductIngredients(request.getItems());
+
         OrderEntity savedOrder = saveOrder(request, totalAmount);
         saveOrderItems(savedOrder.getId(), request.getItems());
 
@@ -191,6 +193,31 @@ public class CheckoutServiceImpl implements CheckoutService {
             if (ingredient.getStockQuantity() < requiredAmount) {
                 throw new BusinessLogicException("Nguyên liệu " + ingredient.getName() + " không đủ để chế biến sản phẩm");
             }
+        }
+    }
+
+    private void deductIngredients(List<OrderItemReq> items) {
+        for (OrderItemReq item : items) {
+            float multiplier = CommonUtils.getMultiplierBySize(item.getSizeName());
+            ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm size này"));
+
+            List<RecipeEntity> recipes = recipesRepo.findByProductId(productSize.getProductId());
+            List<Long> ingredientIds = recipes.stream()
+                    .map(RecipeEntity::getIngredientId)
+                    .collect(Collectors.toList());
+
+            List<IngredientEntity> ingredients = ingredientRepo.findAllById(ingredientIds);
+            Map<Long, IngredientEntity> ingredientMap = ingredients.stream()
+                    .collect(Collectors.toMap(IngredientEntity::getId, ing -> ing));
+
+            for (RecipeEntity recipe : recipes) {
+                IngredientEntity ingredient = ingredientMap.get(recipe.getIngredientId());
+                double requiredAmount = recipe.getBaseAmount() * multiplier * item.getQuantity();
+                ingredient.setStockQuantity(ingredient.getStockQuantity() - requiredAmount);
+            }
+
+            ingredientRepo.saveAll(ingredients);
         }
     }
 
