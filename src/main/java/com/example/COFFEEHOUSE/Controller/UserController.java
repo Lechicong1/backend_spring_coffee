@@ -68,5 +68,24 @@ public class UserController {
                         .data(userService.findAll())
                         .build());
     }
-}
 
+    @GetMapping("/me")
+    public ResponseEntity<ResponseData> getCurrentUser() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("Current user retrieved successfully")
+                        .data(userService.getCurrentUser())
+                        .build());
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<ResponseData> updateCurrentUser(@RequestBody UserReq userReq) {
+        userService.updateCurrentUser(userReq);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.builder()
+                        .success(true)
+                        .message("Current user updated successfully")
+                        .build());
+    }
+}

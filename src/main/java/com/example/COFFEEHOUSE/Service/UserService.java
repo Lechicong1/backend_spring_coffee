@@ -11,4 +11,6 @@ public interface UserService {
     void deleteUser(Long id);
     List<UserResp> findAll();
     UserResp findById(Long id);
+    UserResp getCurrentUser();
+    void updateCurrentUser(UserReq userReq);
 }
