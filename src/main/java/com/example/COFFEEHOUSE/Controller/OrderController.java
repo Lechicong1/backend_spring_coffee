@@ -6,17 +6,23 @@ import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderReq;
 import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderItemNoteReq;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import com.example.COFFEEHOUSE.DTO.Response.InvoiceResp;
+import com.example.COFFEEHOUSE.DTO.Response.VnpayReturnResp;
 import com.example.COFFEEHOUSE.Enums.OrderType;
+import com.example.COFFEEHOUSE.Config.VnpayProperties;
 import com.example.COFFEEHOUSE.Service.CheckoutService;
 import com.example.COFFEEHOUSE.Service.OrderService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -25,6 +31,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final CheckoutService checkoutService;
+        private final VnpayProperties vnpayProperties;
 
     // Reusable response messages (reduce duplicated literals)
     private static final String MSG_CREATED = "Đơn hàng được tạo thành công";
@@ -41,15 +48,34 @@ public class OrderController {
     @PostMapping
 //    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrder(
-            @Valid @RequestBody CreateOrderReq request) {
+            @Valid @RequestBody CreateOrderReq request,
+            HttpServletRequest httpRequest) {
 
-       checkoutService.createOrderFromCart(request);
+        String clientIp = extractClientIp(httpRequest);
+        var checkoutResp = checkoutService.createOrderFromCart(request, clientIp);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.builder()
                         .success(true)
                         .message(MSG_CREATED)
+                        .data(checkoutResp)
                         .build());
+    }
+
+    @GetMapping("/vnpay-return")
+    public RedirectView vnpayReturn(@RequestParam Map<String, String> params) {
+        VnpayReturnResp result = checkoutService.handleVnpayReturn(params);
+
+        String redirectUrl = UriComponentsBuilder
+                .fromUriString(vnpayProperties.getFrontendReturnUrl())
+                .queryParam("paymentGateway", "vnpay")
+                .queryParam("success", result.isSuccess())
+                .queryParam("orderCode", result.getOrderCode())
+                .queryParam("message", result.getMessage())
+                .build()
+                .toUriString();
+
+        return new RedirectView(redirectUrl);
     }
 
     /**
@@ -250,4 +276,16 @@ public class OrderController {
                 .data(orders)
                 .build());
     }
+
+        private String extractClientIp(HttpServletRequest request) {
+                String forwardedFor = request.getHeader("X-Forwarded-For");
+                if (forwardedFor != null && !forwardedFor.isBlank()) {
+                        return forwardedFor.split(",")[0].trim();
+                }
+                String realIp = request.getHeader("X-Real-IP");
+                if (realIp != null && !realIp.isBlank()) {
+                        return realIp;
+                }
+                return request.getRemoteAddr();
+        }
 }

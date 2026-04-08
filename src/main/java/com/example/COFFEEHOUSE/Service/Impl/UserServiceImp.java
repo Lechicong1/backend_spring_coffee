@@ -5,6 +5,7 @@ import com.example.COFFEEHOUSE.DTO.Request.UserReq;
 import com.example.COFFEEHOUSE.DTO.Response.UserResp;
 import com.example.COFFEEHOUSE.Entity.RoleEntity;
 import com.example.COFFEEHOUSE.Enums.ROLE;
+import com.example.COFFEEHOUSE.Exception.DuplicateResourceException;
 import com.example.COFFEEHOUSE.Reposistory.RoleRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.UserService;
@@ -31,6 +32,10 @@ public class UserServiceImp implements UserService {
         RoleEntity roleDefault = roleRepo.findByName(ROLE.USER.name());
         if(roleDefault == null) {
             throw new ResourceNotFoundException("Default role not found: " + ROLE.USER.name());
+        }
+        UserEntity existingUser = userRepo.findByUsername(userReq.getUsername());
+        if (existingUser != null) {
+            throw new DuplicateResourceException("username đã tồn tại");
         }
 
         Long roleId = userReq.getRoleId() == null ? roleDefault.getId() : userReq.getRoleId();

@@ -4,5 +4,6 @@ public enum ROLE {
     ADMIN,
     USER,
     SHIPPER,
-    BARISTA
+    BARISTA,
+    STAFF
 }

@@ -25,3 +25,10 @@ spring:
 app:
   upload-file:
     base-path: src/Assets/
+
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:A5029WRE}
+  hash-secret: ${VNPAY_HASH_SECRET:MCTXJZ111SO42XR1CI1OO26XN1AQNAKE}
+  pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:8080/orders/vnpay-return}
+  frontend-return-url: ${VNPAY_FRONTEND_RETURN_URL:http://127.0.0.1:5500/CoffeeHouse_FE/models/UserDashBoard/index.html}
