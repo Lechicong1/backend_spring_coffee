@@ -1,6 +1,6 @@
 package com.example.COFFEEHOUSE.DTO.Response;
 
-import jakarta.persistence.Id;
+
 import lombok.*;
 
 @Getter
@@ -9,7 +9,6 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserResp {
-
     private Long id;
     private String username;
     private String password;
@@ -17,5 +16,6 @@ public class UserResp {
     private String fullName;
     private Long roleId;
     private Long points;
-
+    private String phoneNumber;
+    private String address;
 }

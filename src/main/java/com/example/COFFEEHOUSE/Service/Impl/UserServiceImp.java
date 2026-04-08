@@ -10,6 +10,7 @@ import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Service.UserService;
 import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
+import com.example.COFFEEHOUSE.Utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,5 +74,18 @@ public class UserServiceImp implements UserService {
         return userRepo.findById(id)
                 .map(userMapper::toDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    }
+
+    @Override
+    public UserResp getCurrentUser() {
+        Long userId = CommonUtils.getIdUserFromToken();
+        return findById(userId);
+    }
+
+    @Override
+    @Transactional
+    public void updateCurrentUser(UserReq userReq) {
+        Long userId = CommonUtils.getIdUserFromToken();
+        updateUser(userId, userReq);
     }
 }
