@@ -705,7 +705,25 @@ public class OrderServiceImpl implements OrderService {
                 order.setStatus(OrderStatus.PENDING);
                 orderRepo.save(order);
 
-                // TODO: Gọi hàm trừ kho nguyên liệu (Deduct Stock) tại đây
+                List<OrderItemEntity> orderItems = orderItemRepo.findByOrderId(order.getId());
+                List<OrderItemReq> itemReqs = new ArrayList<>();
+
+                // Map dữ liệu để nạp vào hàm trừ kho
+                for (OrderItemEntity item : orderItems) {
+                    OrderItemReq req = new OrderItemReq();
+                    req.setProductSizeId(item.getProductSizeId());
+                    req.setQuantity(item.getQuantity());
+
+                    // Cực kỳ quan trọng: Lấy sizeName để CommonUtils.getMultiplierBySize không bị Null
+                    ProductSizeEntity pSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
+                    if (pSize != null) {
+                        req.setSizeName(pSize.getSizeName());
+                    }
+
+                    itemReqs.add(req);
+                }
+
+                checkoutService.deductIngredients(itemReqs);
             }
         } else {
             throw new InvalidInputException("Nội dung chuyển khoản không chứa mã đơn hàng hợp lệ");

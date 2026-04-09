@@ -196,7 +196,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
     }
 
-    private void deductIngredients(List<OrderItemReq> items) {
+    public void deductIngredients(List<OrderItemReq> items) {
         for (OrderItemReq item : items) {
             float multiplier = CommonUtils.getMultiplierBySize(item.getSizeName());
             ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
