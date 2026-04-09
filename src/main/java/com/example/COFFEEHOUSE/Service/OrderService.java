@@ -14,7 +14,6 @@ import org.hibernate.query.Order;
 import java.util.List;
 
 public interface OrderService {
-    OrderResp createOrder(CreateOrderReq request);
     OrderResp createOrderFromCart(CreateOrderFromCartReq request);
     OrderResp updateOrder(Long orderId, UpdateOrderReq request);
     OrderResp getOrderById(Long orderId);
@@ -28,5 +27,6 @@ public interface OrderService {
     OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request);
     List<OrderResp> getOrderByStatusAndOrderType(String status, List<OrderType> orderType);
     List<OrderResp> getOrdersByCurrentUserJWT();
+    void handleVietQrWebhook(String description, Integer amount);
 
 }

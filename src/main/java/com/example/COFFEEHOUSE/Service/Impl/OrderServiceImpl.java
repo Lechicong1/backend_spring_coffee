@@ -31,10 +31,12 @@ import com.example.COFFEEHOUSE.Reposistory.ProductSizeRepo;
 import com.example.COFFEEHOUSE.Reposistory.UserRepo;
 import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
 import com.example.COFFEEHOUSE.Service.CartItemService;
+import com.example.COFFEEHOUSE.Service.CheckoutService;
 import com.example.COFFEEHOUSE.Service.OrderService;
 
 import com.example.COFFEEHOUSE.Utils.CommonUtils;
 
+import com.example.COFFEEHOUSE.Utils.VietQrUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,131 +61,11 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final InvoiceMapper invoiceMapper;
     private final CartItemService cartItemService;
+    private final CheckoutService checkoutService;
 
 
     @Override
-    public OrderResp createOrder(CreateOrderReq request) {
-
-        // Tính tổng tiền
-        Long subtotal =  request.getItems().stream()
-                .mapToLong(item -> ( item.getPrice()) * (item.getQuantity()))
-                .sum();
-
-        long totalAmount = subtotal;
-
-        // Tính giảm giá voucher (nếu có)
-        long voucherDiscount = 0;
-        if (request.getVoucherId() != null && request.getVoucherId() > 0) {
-            VoucherEntity voucher = voucherRepo.findById(request.getVoucherId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy voucher với ID: " + request.getVoucherId()));
-
-            // Kiểm tra voucher có hợp lệ không
-            if (!voucher.getIsActive()) {
-                throw new InvalidInputException("Voucher không còn hoạt động");
-            }
-            LocalDateTime now = LocalDateTime.now();
-            if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
-                throw new InvalidInputException("Voucher chưa có hiệu lực");
-            }
-            if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
-                throw new InvalidInputException("Voucher đã hết hạn");
-            }
-            if (voucher.getQuantity() != null && voucher.getQuantity() <= 0) {
-                throw new InvalidInputException("Voucher đã hết số lượng");
-            }
-            if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
-                throw new InvalidInputException(
-                        String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
-            }
-
-            // Kiểm tra và trừ điểm của user
-            if (voucher.getPointCost() != null && voucher.getPointCost() > 0) {
-                if (request.getUserId() == null) {
-                    throw new InvalidInputException("Vui lòng đăng nhập để sử dụng voucher này");
-                }
-                UserEntity user = userRepo.findById(request.getUserId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với ID: " + request.getUserId()));
-                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
-                if (currentPoints < voucher.getPointCost()) {
-                    throw new InvalidInputException("Bạn không đủ điểm để sử dụng voucher này");
-                }
-                user.setPoints(currentPoints - voucher.getPointCost());
-                userRepo.save(user);
-            }
-
-            // Tính giảm giá
-            if (DiscountType.FIXED == voucher.getDiscountType()) {
-                voucherDiscount = voucher.getDiscountValue().longValue();
-            } else {
-                voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
-            }
-            if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
-                voucherDiscount = voucher.getMaxDiscountValue().longValue();
-            }
-            voucherDiscount = Math.min(voucherDiscount, subtotal);
-
-            // Thu hồi 1 lượt dùng voucher (trừ số lượng)
-            voucher.setQuantity(voucher.getQuantity() - 1);
-            if (voucher.getUsedCount() != null) {
-                voucher.setUsedCount(voucher.getUsedCount() + 1);
-            } else {
-                voucher.setUsedCount(1);
-            }
-            voucherRepo.save(voucher);
-        }
-
-        totalAmount = Math.max(0, subtotal - voucherDiscount);
-
-        // Tạo Order entity
-        String orderCode = generateOrderCode();
-        OrderEntity order = OrderEntity.builder()
-                .orderCode(orderCode)
-                .userId(request.getUserId())
-                .orderType(request.getOrderType())
-                .status(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
-                .paymentMethod(request.getPaymentMethod())
-                .tableNumber(request.getTableNumber())
-                .totalAmount(totalAmount)
-                .shippingAddress(request.getShippingAddress())
-                .receiverName(request.getReceiverName())
-                .receiverPhone(request.getReceiverPhone())
-                .shippingFee(request.getShippingFee() != null ? request.getShippingFee() : 0L)
-                .note(request.getNote())
-                .voucherId(request.getVoucherId())
-                .build();
-
-        OrderEntity savedOrder = orderRepo.save(order);
-        List<OrderItemEntity> orderItems = new ArrayList<>();
-
-        for (OrderItemReq itemReq : request.getItems()) {
-            OrderItemEntity orderItem = OrderItemEntity.builder()
-                    .orderId(savedOrder.getId())
-                    .productSizeId(itemReq.getProductSizeId())
-                    .quantity(itemReq.getQuantity())
-                    .priceAtPurchase(itemReq.getPrice())
-                    .note(itemReq.getNote())
-                    .build();
-
-            orderItems.add(orderItem);
-        }
-
-       // luu order items
-       orderItemRepo.saveAll(orderItems);
-
-       // Xóa giỏ hàng sau khi tạo order thành công
-       cartItemService.clearCart();
-
-        return mapOrderToResp(savedOrder, orderItems);
-    }
-
-    /**
-     * Tạo đơn hàng từ cart (CreateOrderFromCartReq)
-     * - Được sử dụng bởi hệ thống POS
-     * - Kiểm tra giá từ DB để chống gian lận
-     */
-    @Override
+    @Transactional
     public OrderResp createOrderFromCart(CreateOrderFromCartReq request) {
         // Validate request
         if (request.getCartItems() == null || request.getCartItems().isEmpty()) {
@@ -216,7 +98,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Validate bàn khi đặt tại quầy
         if (orderType == OrderType.AT_COUNTER &&
-            (request.getTableNumber() == null || request.getTableNumber().trim().isEmpty())) {
+                (request.getTableNumber() == null || request.getTableNumber().trim().isEmpty())) {
             throw new InvalidInputException("Vui lòng chọn số bàn");
         }
 
@@ -225,12 +107,16 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItemEntity> orderItems = new java.util.ArrayList<>();
 
         for (OrderItemReq itemReq : request.getCartItems()) {
-            // Kiểm tra product_size_id tồn tại và lấy giá từ DB
+
+            // 1️⃣ TÁI SỬ DỤNG HÀM CỦA BẠN: Validate tồn kho trước khi làm các việc khác
+            checkoutService.validateStockOrderItem(itemReq);
+
+            // 2️⃣ Kiểm tra product_size_id tồn tại và lấy giá từ DB
             ProductSizeEntity productSize = productSizeRepo.findById(itemReq.getProductSizeId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy kích thước sản phẩm với ID: " + itemReq.getProductSizeId()));
 
-            // ✅ Kiểm tra giá: so sánh giá từ client và DB
+            // Kiểm tra giá: so sánh giá từ client và DB
             long dbPrice = productSize.getPrice();
             long clientPrice = itemReq.getPrice();
             double priceDiffPercent = Math.abs((double) (dbPrice - clientPrice) / dbPrice) * 100;
@@ -318,7 +204,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         long totalAmount = Math.max(0, subtotal - voucherDiscount);
-
+        PaymentStatus initialPaymentStatus = (paymentMethod == PaymentMethod.CASH)
+                ? PaymentStatus.PAID
+                : PaymentStatus.UNPAID;
         // Tạo Order entity
         String orderCode = generateOrderCode();
         OrderEntity order = OrderEntity.builder()
@@ -326,7 +214,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(request.getUserId())
                 .orderType(orderType)
                 .status(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.PAID)
+                .paymentStatus(initialPaymentStatus)
                 .paymentMethod(paymentMethod)
                 .tableNumber(request.getTableNumber())
                 .totalAmount(totalAmount)
@@ -797,6 +685,30 @@ public class OrderServiceImpl implements OrderService {
                 user.setPoints(currentPoints + pointsToAdd);
                 userRepo.save(user);
             });
+        }
+    }
+    /**
+     * Xử lý Webhook VietQR: Đọc nội dung, tìm mã đơn, cập nhật trạng thái
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleVietQrWebhook(String description, Integer amount) {
+        String orderCode = VietQrUtils.extractOrderCode(description);
+
+        if (orderCode != null) {
+            OrderEntity order = orderRepo.findByOrderCode(orderCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với code: " + orderCode));
+
+            // Kiểm tra số tiền và trạng thái thanh toán
+            if (amount >= order.getTotalAmount() && order.getPaymentStatus() != PaymentStatus.PAID) {
+                order.setPaymentStatus(PaymentStatus.PAID);
+                order.setStatus(OrderStatus.PENDING);
+                orderRepo.save(order);
+
+                // TODO: Gọi hàm trừ kho nguyên liệu (Deduct Stock) tại đây
+            }
+        } else {
+            throw new InvalidInputException("Nội dung chuyển khoản không chứa mã đơn hàng hợp lệ");
         }
     }
 }
