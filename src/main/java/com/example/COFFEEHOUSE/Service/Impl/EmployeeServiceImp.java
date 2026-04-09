@@ -7,6 +7,7 @@ import com.example.COFFEEHOUSE.Entity.EmployeeEntity;
 import com.example.COFFEEHOUSE.Entity.RoleEntity;
 import com.example.COFFEEHOUSE.Entity.UserEntity;
 import com.example.COFFEEHOUSE.Enums.ROLE;
+import com.example.COFFEEHOUSE.Exception.DuplicateResourceException;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
 import com.example.COFFEEHOUSE.Reposistory.EmployeeRepo;
 import com.example.COFFEEHOUSE.Reposistory.RoleRepo;
@@ -34,13 +35,13 @@ public class EmployeeServiceImp implements EmployeeService {
     @Transactional
     public void createEmployee(UserReq userReq) {
         if (userRepo.existsByUsername(userReq.getUsername())) {
-            throw new RuntimeException("Username đã tồn tại");
+            throw new DuplicateResourceException("Username đã tồn tại");
         }
         if (userRepo.existsByEmail(userReq.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại");
+            throw new DuplicateResourceException("Email đã tồn tại");
         }
         if (userRepo.existsByPhoneNumber(userReq.getPhoneNumber())) {
-            throw new RuntimeException("Số điện thoại đã tồn tại");
+            throw new DuplicateResourceException("Số điện thoại đã tồn tại");
         }
 
         // Mặc định nếu không truyền roleId thì tìm role nhân viên (ví dụ MANAGER hoặc STAFF)
@@ -76,10 +77,10 @@ public class EmployeeServiceImp implements EmployeeService {
 
         // Kiểm tra trùng lặp khi cập nhật (trừ email/phone của chính nó) bằng DB query trực tiếp
         if (userReq.getEmail() != null && userRepo.existsByEmailAndIdNot(userReq.getEmail(), id)) {
-            throw new RuntimeException("Email đã tồn tại");
+            throw new DuplicateResourceException("Email đã tồn tại");
         }
         if (userReq.getPhoneNumber() != null && userRepo.existsByPhoneNumberAndIdNot(userReq.getPhoneNumber(), id)) {
-            throw new RuntimeException("Số điện thoại đã tồn tại");
+            throw new DuplicateResourceException("Số điện thoại đã tồn tại");
         }
 
         user.setFullName(userReq.getFullName());
