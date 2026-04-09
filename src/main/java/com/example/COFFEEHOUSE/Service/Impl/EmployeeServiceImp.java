@@ -33,6 +33,16 @@ public class EmployeeServiceImp implements EmployeeService {
     @Override
     @Transactional
     public void createEmployee(UserReq userReq) {
+        if (userRepo.existsByUsername(userReq.getUsername())) {
+            throw new RuntimeException("Username đã tồn tại");
+        }
+        if (userRepo.existsByEmail(userReq.getEmail())) {
+            throw new RuntimeException("Email đã tồn tại");
+        }
+        if (userRepo.existsByPhoneNumber(userReq.getPhoneNumber())) {
+            throw new RuntimeException("Số điện thoại đã tồn tại");
+        }
+
         // Mặc định nếu không truyền roleId thì tìm role nhân viên (ví dụ MANAGER hoặc STAFF)
         // Ở đây giả sử roleId được truyền từ client
         RoleEntity role = roleRepo.findById(userReq.getRoleId())
@@ -63,6 +73,14 @@ public class EmployeeServiceImp implements EmployeeService {
     public void updateEmployee(Long id, UserReq userReq) {
         UserEntity user = userRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+
+        // Kiểm tra trùng lặp khi cập nhật (trừ email/phone của chính nó) bằng DB query trực tiếp
+        if (userReq.getEmail() != null && userRepo.existsByEmailAndIdNot(userReq.getEmail(), id)) {
+            throw new RuntimeException("Email đã tồn tại");
+        }
+        if (userReq.getPhoneNumber() != null && userRepo.existsByPhoneNumberAndIdNot(userReq.getPhoneNumber(), id)) {
+            throw new RuntimeException("Số điện thoại đã tồn tại");
+        }
 
         user.setFullName(userReq.getFullName());
         user.setEmail(userReq.getEmail());

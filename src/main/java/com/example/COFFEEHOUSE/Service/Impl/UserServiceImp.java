@@ -33,9 +33,15 @@ public class UserServiceImp implements UserService {
         if(roleDefault == null) {
             throw new ResourceNotFoundException("Default role not found: " + ROLE.USER.name());
         }
-        UserEntity existingUser = userRepo.findByUsername(userReq.getUsername());
-        if (existingUser != null) {
-            throw new DuplicateResourceException("username đã tồn tại");
+
+        if (userRepo.existsByUsername(userReq.getUsername())) {
+            throw new DuplicateResourceException("Username đã tồn tại");
+        }
+        if (userReq.getEmail() != null && userRepo.existsByEmail(userReq.getEmail())) {
+            throw new DuplicateResourceException("Email đã tồn tại");
+        }
+        if (userReq.getPhoneNumber() != null && userRepo.existsByPhoneNumber(userReq.getPhoneNumber())) {
+            throw new DuplicateResourceException("Số điện thoại đã tồn tại");
         }
 
         Long roleId = userReq.getRoleId() == null ? roleDefault.getId() : userReq.getRoleId();
@@ -55,6 +61,14 @@ public class UserServiceImp implements UserService {
     public void updateUser(Long id, UserReq userReq) {
         UserEntity existingUser = userRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        // Kiểm tra trùng lặp khi cập nhật, loại trừ bản ghi hiện tại
+        if (userReq.getEmail() != null && userRepo.existsByEmailAndIdNot(userReq.getEmail(), id)) {
+            throw new DuplicateResourceException("Email đã tồn tại");
+        }
+        if (userReq.getPhoneNumber() != null && userRepo.existsByPhoneNumberAndIdNot(userReq.getPhoneNumber(), id)) {
+            throw new DuplicateResourceException("Số điện thoại đã tồn tại");
+        }
 
         userMapper.updateEntityFromRequest(userReq, existingUser);
 
