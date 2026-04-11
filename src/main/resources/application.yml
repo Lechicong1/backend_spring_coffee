@@ -4,10 +4,10 @@ spring:
       max-file-size: 10MB
       max-request-size: 20MB
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/COFFEEHOUSE}
-    username: ${DB_USER:root}
-    password: ${DB_PASS:root}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.iopglvtshxdjcgmssgkl
+    password: WWsQXBOW1AtotW3o
+    driver-class-name: org.postgresql.Driver
   security:
     authentication:
       jwt:
@@ -20,7 +20,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 app:
   upload-file:

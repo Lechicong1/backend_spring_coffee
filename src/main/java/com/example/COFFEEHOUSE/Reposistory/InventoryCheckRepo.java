@@ -30,20 +30,23 @@ public interface InventoryCheckRepo extends JpaRepository<InventoryCheckEntity, 
     /**
      * Lấy tất cả kiểm kho theo ngày (sắp xếp theo thời gian mới nhất)
      */
-    @Query("SELECT ic FROM InventoryCheckEntity ic WHERE DATE(ic.checkedAt) = :date ORDER BY ic.checkedAt DESC")
+    @Query(value = "SELECT * FROM inventory_checks ic WHERE DATE(ic.checked_at) = :date ORDER BY ic.checked_at DESC",
+            nativeQuery = true)
     List<InventoryCheckEntity> findByDate(@Param("date") LocalDate date);
 
     /**
      * Kiểm tra nguyên liệu đã được kiểm kho trong ngày chưa
      */
-    @Query("SELECT ic FROM InventoryCheckEntity ic WHERE ic.ingredient = :ingredient AND DATE(ic.checkedAt) = :date")
+    @Query(value = "SELECT * FROM inventory_checks ic WHERE ic.ingredient = :ingredient AND DATE(ic.checked_at) = :date LIMIT 1",
+            nativeQuery = true)
     Optional<InventoryCheckEntity> findByIngredientAndDate(@Param("ingredient") String ingredient,
             @Param("date") LocalDate date);
 
     /**
      * Kiểm tra nguyên liệu đã được kiểm kho hôm nay chưa
      */
-    @Query("SELECT ic FROM InventoryCheckEntity ic WHERE ic.ingredient = :ingredient AND DATE(ic.checkedAt) = CURRENT_DATE")
+    @Query(value = "SELECT * FROM inventory_checks ic WHERE ic.ingredient = :ingredient AND DATE(ic.checked_at) = CURRENT_DATE LIMIT 1",
+            nativeQuery = true)
     Optional<InventoryCheckEntity> findByIngredientToday(@Param("ingredient") String ingredient);
 
     /**
@@ -66,15 +69,16 @@ public interface InventoryCheckRepo extends JpaRepository<InventoryCheckEntity, 
     /**
      * Báo cáo thất thoát theo khoảng ngày (group theo nguyên liệu + ngày kiểm kho)
      */
-    @Query("SELECT ic.ingredient AS ingredient, "
-            + "DATE(ic.checkedAt) AS checkDate, "
-            + "SUM(ic.theoryQuantity) AS totalTheory, "
-            + "SUM(ic.actualQuantity) AS totalActual, "
+    @Query(value = "SELECT ic.ingredient AS ingredient, "
+            + "DATE(ic.checked_at) AS checkDate, "
+            + "SUM(ic.\"theoryQuantity\") AS totalTheory, "
+            + "SUM(ic.\"actualQuantity\") AS totalActual, "
             + "SUM(ic.difference) AS totalDifference "
-            + "FROM InventoryCheckEntity ic "
-            + "WHERE ic.checkedAt >= :fromDateTime AND ic.checkedAt < :toDateTimeExclusive "
-            + "GROUP BY ic.ingredient, DATE(ic.checkedAt) "
-            + "ORDER BY DATE(ic.checkedAt) DESC, ic.ingredient ASC")
+            + "FROM inventory_checks ic "
+            + "WHERE ic.checked_at >= :fromDateTime AND ic.checked_at < :toDateTimeExclusive "
+            + "GROUP BY ic.ingredient, DATE(ic.checked_at) "
+            + "ORDER BY DATE(ic.checked_at) DESC, ic.ingredient ASC",
+            nativeQuery = true)
     List<InventoryCheckDateRangeProjection> getLossReportByDateRange(
             @Param("fromDateTime") LocalDateTime fromDateTime,
             @Param("toDateTimeExclusive") LocalDateTime toDateTimeExclusive);
