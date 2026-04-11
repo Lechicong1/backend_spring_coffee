@@ -51,8 +51,17 @@ public class ProductServiceImpl implements ProductService {
         
         productMapper.updateEntityFromRequest(request, entity);
         if (image != null && !image.isEmpty()) {
+            if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
+                fileStorage.deleteFile("products", entity.getImageUrl());
+            }
             String imageUrl = fileStorage.saveFile(image, "products");
             entity.setImageUrl(imageUrl);
+        } else if (Boolean.TRUE.equals(request.getRemoveImage())) {
+            // Remove image if front-end explicitly requests it and no new image is uploaded
+            if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
+                fileStorage.deleteFile("products", entity.getImageUrl());
+                entity.setImageUrl(null);
+            }
         }
         productRepo.save(entity);
 
@@ -67,6 +76,9 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = productRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         productSizeService.deleteSizesByProductId(id);
+        if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
+            fileStorage.deleteFile("products", entity.getImageUrl());
+        }
         productRepo.delete(entity);
     }
 
