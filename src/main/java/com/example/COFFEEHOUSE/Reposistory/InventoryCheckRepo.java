@@ -71,8 +71,8 @@ public interface InventoryCheckRepo extends JpaRepository<InventoryCheckEntity, 
      */
     @Query(value = "SELECT ic.ingredient AS ingredient, "
             + "DATE(ic.checked_at) AS checkDate, "
-            + "SUM(ic.\"theoryQuantity\") AS totalTheory, "
-            + "SUM(ic.\"actualQuantity\") AS totalActual, "
+            + "SUM(ic.theoryquantity) AS totalTheory, "
+            + "SUM(ic.actualquantity) AS totalActual, "
             + "SUM(ic.difference) AS totalDifference "
             + "FROM inventory_checks ic "
             + "WHERE ic.checked_at >= :fromDateTime AND ic.checked_at < :toDateTimeExclusive "
