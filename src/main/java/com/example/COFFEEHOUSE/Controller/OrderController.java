@@ -204,18 +204,15 @@ public class OrderController {
 
     /**
      * PUT /orders/{id}/cancel - Hủy đơn hàng
-     * STAFF/ADMIN được hủy
      */
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
-    public ResponseEntity<ResponseData> cancelOrder(
-            @PathVariable Long id) {
-
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF', 'USER')")
+    public ResponseEntity<ResponseData> cancelOrder(@PathVariable Long id) {
         orderService.cancelOrder(id);
 
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
-                .message(MSG_CANCELLED)
+                .message("Hủy đơn hàng thành công")
                 .build());
     }
 

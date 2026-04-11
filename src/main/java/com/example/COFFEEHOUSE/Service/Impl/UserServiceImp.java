@@ -33,7 +33,7 @@ public class UserServiceImp implements UserService {
         if(roleDefault == null) {
             throw new ResourceNotFoundException("Default role not found: " + ROLE.USER.name());
         }
-
+        
         if (userRepo.existsByUsername(userReq.getUsername())) {
             throw new DuplicateResourceException("Username đã tồn tại");
         }
@@ -85,7 +85,7 @@ public class UserServiceImp implements UserService {
 
     @Override
     public List<UserResp> findAll() {
-        return userMapper.toDTOList(userRepo.findAll());
+        return userMapper.toDTOList(userRepo.findAllCustomer());
     }
 
     @Override

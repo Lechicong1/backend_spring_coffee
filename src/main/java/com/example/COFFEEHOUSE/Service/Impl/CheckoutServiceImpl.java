@@ -14,6 +14,7 @@ import com.example.COFFEEHOUSE.Reposistory.*;
 import com.example.COFFEEHOUSE.Config.VnpayProperties;
 import com.example.COFFEEHOUSE.Service.CartItemService;
 import com.example.COFFEEHOUSE.Service.CheckoutService;
+import com.example.COFFEEHOUSE.Service.IngredientService;
 import com.example.COFFEEHOUSE.Service.VoucherService;
 import com.example.COFFEEHOUSE.Utils.CommonUtils;
 import com.example.COFFEEHOUSE.Utils.VnpayUtils;
@@ -39,6 +40,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final ProductSizeRepo productSizeRepo;
     private final IngredientRepo ingredientRepo;
     private final VnpayProperties vnpayProperties;
+    private final IngredientService ingredientService;
 
     @Override
     @Transactional
@@ -53,7 +55,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             validateStockOrderItem(item);
         }
 
-        deductIngredients(request.getItems());
+         ingredientService.deductIngredients(request.getItems());
 
         OrderEntity savedOrder = saveOrder(request, totalAmount);
         saveOrderItems(savedOrder.getId(), request.getItems());
@@ -196,30 +198,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
     }
 
-    public void deductIngredients(List<OrderItemReq> items) {
-        for (OrderItemReq item : items) {
-            float multiplier = CommonUtils.getMultiplierBySize(item.getSizeName());
-            ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm size này"));
 
-            List<RecipeEntity> recipes = recipesRepo.findByProductId(productSize.getProductId());
-            List<Long> ingredientIds = recipes.stream()
-                    .map(RecipeEntity::getIngredientId)
-                    .collect(Collectors.toList());
-
-            List<IngredientEntity> ingredients = ingredientRepo.findAllById(ingredientIds);
-            Map<Long, IngredientEntity> ingredientMap = ingredients.stream()
-                    .collect(Collectors.toMap(IngredientEntity::getId, ing -> ing));
-
-            for (RecipeEntity recipe : recipes) {
-                IngredientEntity ingredient = ingredientMap.get(recipe.getIngredientId());
-                double requiredAmount = recipe.getBaseAmount() * multiplier * item.getQuantity();
-                ingredient.setStockQuantity(ingredient.getStockQuantity() - requiredAmount);
-            }
-
-            ingredientRepo.saveAll(ingredients);
-        }
-    }
 
     private boolean isVnpayPayment(PaymentMethod paymentMethod) {
         return paymentMethod == PaymentMethod.BANKING || paymentMethod == PaymentMethod.CARD;

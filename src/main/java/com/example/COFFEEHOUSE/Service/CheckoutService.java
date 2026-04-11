@@ -12,5 +12,5 @@ public interface CheckoutService {
     CheckoutOrderResp createOrderFromCart(CreateOrderReq request, String clientIp);
     VnpayReturnResp handleVnpayReturn(Map<String, String> vnpayParams);
     void validateStockOrderItem(OrderItemReq item);
-    void deductIngredients(List<OrderItemReq> items);
+
 }
