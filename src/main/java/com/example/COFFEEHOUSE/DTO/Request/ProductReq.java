@@ -13,4 +13,5 @@ public class ProductReq {
     private String description;
     private Boolean isActive = true;
     private List<ProductSizeReq> sizes;
+    private Boolean removeImage;
 }
