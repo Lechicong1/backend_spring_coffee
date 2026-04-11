@@ -22,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.DateTimeException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -208,7 +210,11 @@ public class CheckoutServiceImpl implements CheckoutService {
         long amountToPay = (order.getTotalAmount() != null ? order.getTotalAmount() : 0L)
                 + (order.getShippingFee() != null ? order.getShippingFee() : 0L);
 
-        LocalDateTime now = LocalDateTime.now();
+        int expireMinutes = (vnpayProperties.getExpireMinutes() == null || vnpayProperties.getExpireMinutes() <= 0)
+            ? 15
+            : vnpayProperties.getExpireMinutes();
+
+        ZonedDateTime now = ZonedDateTime.now(resolveVnpayZoneId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
         Map<String, String> vnpParams = new HashMap<>();
@@ -224,10 +230,23 @@ public class CheckoutServiceImpl implements CheckoutService {
         vnpParams.put("vnp_ReturnUrl", vnpayProperties.getReturnUrl());
         vnpParams.put("vnp_IpAddr", (clientIp == null || clientIp.isBlank()) ? "127.0.0.1" : clientIp);
         vnpParams.put("vnp_CreateDate", now.format(formatter));
-        vnpParams.put("vnp_ExpireDate", now.plusMinutes(15).format(formatter));
+        vnpParams.put("vnp_ExpireDate", now.plusMinutes(expireMinutes).format(formatter));
 
         String queryData = VnpayUtils.buildQueryData(vnpParams);
         String secureHash = VnpayUtils.hmacSha512(vnpayProperties.getHashSecret(), queryData);
         return vnpayProperties.getPayUrl() + "?" + queryData + "&vnp_SecureHash=" + secureHash;
+    }
+
+    private ZoneId resolveVnpayZoneId() {
+        String configuredZone = vnpayProperties.getTimeZone();
+        if (configuredZone == null || configuredZone.isBlank()) {
+            return ZoneId.of("Asia/Ho_Chi_Minh");
+        }
+
+        try {
+            return ZoneId.of(configuredZone.trim());
+        } catch (DateTimeException ex) {
+            return ZoneId.of("Asia/Ho_Chi_Minh");
+        }
     }
 }
