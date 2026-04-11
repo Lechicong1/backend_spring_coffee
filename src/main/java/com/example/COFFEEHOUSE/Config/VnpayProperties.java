@@ -15,4 +15,6 @@ public class VnpayProperties {
     private String payUrl;
     private String returnUrl;
     private String frontendReturnUrl;
+    private String timeZone;
+    private Integer expireMinutes;
 }
