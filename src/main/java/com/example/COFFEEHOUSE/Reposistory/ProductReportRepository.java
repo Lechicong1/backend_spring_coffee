@@ -13,22 +13,24 @@ import java.util.List;
 
 @Repository
 public interface ProductReportRepository extends JpaRepository<OrderItemEntity, Long> {
-    @Query(value = "SELECT p.id AS id, p.name AS name, c.name AS categoryName, p.image_url AS imageUrl, "
-            + "SUM(oi.quantity) AS totalQuantity, SUM(oi.quantity * oi.price_at_purchase) AS totalRevenue, "
-            + "0.0 AS costPrice, 0.0 AS profit "
-            + "FROM order_items oi "
-            + "JOIN orders o ON oi.order_id = o.id "
-            + "JOIN product_sizes ps ON oi.product_size_id = ps.id "
-            + "JOIN products p ON ps.product_id = p.id "
-            + "JOIN categories c ON p.category_id = c.id "
-            + "WHERE o.status = :status "
-            + "AND o.created_at BETWEEN :fromDate AND :toDate "
-            + "AND (:categoryId = 'all' OR CAST(p.category_id AS TEXT) = CAST(:categoryIdLong AS TEXT)) "
-            + "GROUP BY p.id, p.name, c.name, p.image_url "
-            + "ORDER BY SUM(oi.quantity * oi.price_at_purchase) DESC",
-            nativeQuery = true)
-    List<Object[]> fetchReportRowsNative(
-            @Param("status") String status,
+    @Query("SELECT new com.example.COFFEEHOUSE.DTO.Response.ProductReportRowResp("
+            + " p.id, p.name, c.name, p.imageUrl, "
+            + " CAST(SUM(oi.quantity) AS long), "
+            + " CAST(SUM(oi.quantity * oi.priceAtPurchase) AS long), "
+            + " CAST(0.0 AS double), "
+            + " CAST(0.0 AS double))"
+            + " FROM OrderItemEntity oi"
+            + " JOIN OrderEntity o ON oi.orderId = o.id"
+            + " JOIN ProductSizeEntity ps ON oi.productSizeId = ps.id"
+            + " JOIN ProductEntity p ON ps.productId = p.id"
+            + " JOIN CategoryEntity c ON p.categoryId = c.id"
+            + " WHERE o.status = :status"
+            + " AND o.createdAt BETWEEN :fromDate AND :toDate"
+            + " AND (:categoryId = 'all' OR p.categoryId = :categoryIdLong)"
+            + " GROUP BY p.id, p.name, c.name, p.imageUrl"
+            + " ORDER BY SUM(oi.quantity * oi.priceAtPurchase) DESC")
+    List<ProductReportRowResp> fetchReportRowsNative(
+            @Param("status") OrderStatus status,
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate,
             @Param("categoryId") String categoryId,
