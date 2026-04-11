@@ -2,7 +2,7 @@ package com.example.COFFEEHOUSE.Service.Impl;
 
 import com.example.COFFEEHOUSE.DTO.Mapper.InvoiceMapper;
 import com.example.COFFEEHOUSE.DTO.Mapper.OrderMapper;
-import com.example.COFFEEHOUSE.DTO.Request.CreateOrderReq;
+
 import com.example.COFFEEHOUSE.DTO.Request.CreateOrderFromCartReq;
 import com.example.COFFEEHOUSE.DTO.Request.OrderItemReq;
 import com.example.COFFEEHOUSE.DTO.Request.UpdateOrderReq;
@@ -24,14 +24,11 @@ import com.example.COFFEEHOUSE.Enums.PaymentMethod;
 import com.example.COFFEEHOUSE.Enums.PaymentStatus;
 import com.example.COFFEEHOUSE.Exception.InvalidInputException;
 import com.example.COFFEEHOUSE.Exception.ResourceNotFoundException;
-import com.example.COFFEEHOUSE.Reposistory.OrderItemRepo;
-import com.example.COFFEEHOUSE.Reposistory.OrderRepo;
-import com.example.COFFEEHOUSE.Reposistory.ProductRepo;
-import com.example.COFFEEHOUSE.Reposistory.ProductSizeRepo;
-import com.example.COFFEEHOUSE.Reposistory.UserRepo;
-import com.example.COFFEEHOUSE.Reposistory.VoucherRepo;
+import com.example.COFFEEHOUSE.Reposistory.*;
+
 import com.example.COFFEEHOUSE.Service.CartItemService;
 import com.example.COFFEEHOUSE.Service.CheckoutService;
+import com.example.COFFEEHOUSE.Service.IngredientService;
 import com.example.COFFEEHOUSE.Service.OrderService;
 
 import com.example.COFFEEHOUSE.Utils.CommonUtils;
@@ -62,7 +59,7 @@ public class OrderServiceImpl implements OrderService {
     private final InvoiceMapper invoiceMapper;
     private final CartItemService cartItemService;
     private final CheckoutService checkoutService;
-
+    private final IngredientService ingredientService;
 
     @Override
     @Transactional
@@ -419,12 +416,26 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
-            throw new InvalidInputException("Không thể hủy đơn hàng đã hoàn thành hoặc đã hủy");
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new InvalidInputException("Chỉ có thể hủy đơn hàng ở trạng thái PENDING");
         }
 
         order.setStatus(OrderStatus.CANCELLED);
         orderRepo.save(order);
+
+        List<OrderItemEntity> items = orderItemRepo.findByOrderId(orderId);
+        List<OrderItemReq> itemReqs = items.stream().map(item -> {
+            OrderItemReq req = new OrderItemReq();
+            req.setProductSizeId(item.getProductSizeId());
+            req.setQuantity(item.getQuantity());
+            ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
+            if(productSize != null) {
+                req.setSizeName(productSize.getSizeName());
+            }
+            return req;
+        }).collect(Collectors.toList());
+
+        ingredientService.refundIngredients(itemReqs);
     }
 
     /**
@@ -723,7 +734,7 @@ public class OrderServiceImpl implements OrderService {
                     itemReqs.add(req);
                 }
 
-                checkoutService.deductIngredients(itemReqs);
+               ingredientService.deductIngredients(itemReqs);
             }
         } else {
             throw new InvalidInputException("Nội dung chuyển khoản không chứa mã đơn hàng hợp lệ");

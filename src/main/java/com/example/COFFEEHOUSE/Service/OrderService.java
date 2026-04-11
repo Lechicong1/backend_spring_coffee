@@ -16,12 +16,12 @@ import java.util.List;
 public interface OrderService {
     OrderResp createOrderFromCart(CreateOrderFromCartReq request);
     OrderResp updateOrder(Long orderId, UpdateOrderReq request);
+    void cancelOrder(Long orderId);
     OrderResp getOrderById(Long orderId);
     OrderResp getOrderByCode(String orderCode);
     List<OrderResp> getOrdersByUserId(Long userId);
     List<OrderResp> getAllOrders();
     void deleteOrder(Long orderId);
-    void cancelOrder(Long orderId);
     InvoiceResp getInvoiceByCode(String orderCode);
     OrderDetailResp getOrderDetail(Long orderId);
     OrderItemResp updateOrderItemNote(Long orderId, UpdateOrderItemNoteReq request);
