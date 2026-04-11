@@ -38,25 +38,13 @@ public class ProductReportServiceImpl implements ProductReportService {
 
         Long categoryIdLong = Objects.equals(filterReq.getCategory_id(), "all") ? null : Long.valueOf(filterReq.getCategory_id());
 
-        List<Object[]> rawRows = productReportRepository.fetchReportRowsNative(
-                OrderStatus.COMPLETED.name(),
+        List<ProductReportRowResp> rows = productReportRepository.fetchReportRowsNative(
+                OrderStatus.COMPLETED,
                 from.atStartOfDay(),
                 to.atTime(LocalTime.MAX),
                 filterReq.getCategory_id(),
                 categoryIdLong
         );
-
-        List<ProductReportRowResp> rows = rawRows.stream().map(row -> ProductReportRowResp.builder()
-                .productId(((Number) row[0]).longValue())
-                .productName((String) row[1])
-                .categoryName((String) row[2])
-                .imageUrl((String) row[3])
-                .totalQuantity(((Number) row[4]).longValue())
-                .totalRevenue(((Number) row[5]).longValue())
-                .percent((Double) row[6])
-                .avgPrice((Double) row[7])
-                .build()
-        ).toList();
 
         return ResponseData.builder()
                 .success(true)
