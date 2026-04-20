@@ -3,6 +3,7 @@ package com.example.COFFEEHOUSE.Exception;
 
 import com.example.COFFEEHOUSE.DTO.ResponseData;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -144,5 +145,27 @@ public class GlobalException {
         responseData.setMessage(e.getMessage());
         responseData.setData(null);
         return ResponseEntity.status(409).body(responseData);
+    }
+    @ExceptionHandler(value = DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+//        log.warn("DataIntegrityViolationException: {}", e.getMessage());
+
+        ResponseData responseData = new ResponseData();
+        responseData.setSuccess(false);
+
+        String errorMessage = e.getMessage();
+        String userFriendlyMessage = "Lỗi ràng buộc dữ liệu!";
+
+        if (errorMessage != null && (errorMessage.contains("foreign key constraint")
+                || errorMessage.contains("violates foreign key constraint")
+                || errorMessage.contains("is still referenced"))) {
+            userFriendlyMessage = "Dữ liệu đang được tham chiếu bởi dữ liệu khác , không thể xóa";
+        }
+
+        responseData.setMessage(userFriendlyMessage);
+        responseData.setData(null);
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT) // 409
+                .body(responseData);
     }
 }
