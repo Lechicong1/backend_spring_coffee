@@ -77,8 +77,11 @@ public class VoucherServiceImpl implements VoucherService {
             return false;
         }
 
-        if (entity.getQuantity() != null && entity.getQuantity() <= 0) {
-            return false;
+        if (entity.getQuantity() != null) {
+            long usedCount = entity.getUsedCount() != null ? entity.getUsedCount() : 0L;
+            if (usedCount >= entity.getQuantity()) {
+                return false;
+            }
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -103,10 +106,10 @@ public class VoucherServiceImpl implements VoucherService {
                 .orElseThrow(() -> new RuntimeException("Voucher not found"));
 
         if (entity.getQuantity() != null) {
-            if (entity.getQuantity() <= 0) {
+            long usedCount = entity.getUsedCount() != null ? entity.getUsedCount() : 0L;
+            if (usedCount >= entity.getQuantity()) {
                 throw new RuntimeException("Voucher is out of stock");
             }
-            entity.setQuantity(entity.getQuantity() - 1);
         }
 
         if (entity.getUsedCount() != null) {
@@ -134,7 +137,13 @@ public class VoucherServiceImpl implements VoucherService {
         List<VoucherEntity> availableVouchers = voucherRepo.findAll().stream()
                 .filter(voucher -> voucher.getIsActive() != null && voucher.getIsActive())
                 .filter(voucher -> voucher.getPointCost() != null && voucher.getPointCost() <= userPoints)
-                .filter(voucher -> voucher.getQuantity() != null && voucher.getQuantity() > 0)
+                .filter(voucher -> {
+                    if (voucher.getQuantity() == null) {
+                        return false;
+                    }
+                    long usedCount = voucher.getUsedCount() != null ? voucher.getUsedCount() : 0L;
+                    return usedCount < voucher.getQuantity();
+                })
                 .filter(voucher -> {
                     LocalDateTime now = LocalDateTime.now();
                     if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
@@ -162,7 +171,13 @@ public class VoucherServiceImpl implements VoucherService {
         List<VoucherEntity> availableVouchers = voucherRepo.findAll().stream()
                 .filter(voucher -> voucher.getIsActive() != null && voucher.getIsActive())
                 .filter(voucher -> voucher.getPointCost() != null && voucher.getPointCost() <= userPoints)
-                .filter(voucher -> voucher.getQuantity() != null && voucher.getQuantity() > 0)
+                .filter(voucher -> {
+                    if (voucher.getQuantity() == null) {
+                        return false;
+                    }
+                    long usedCount = voucher.getUsedCount() != null ? voucher.getUsedCount() : 0L;
+                    return usedCount < voucher.getQuantity();
+                })
                 .filter(voucher -> {
                     LocalDateTime now = LocalDateTime.now();
                     if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
@@ -196,8 +211,11 @@ public class VoucherServiceImpl implements VoucherService {
         if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
             throw new InvalidInputException("Voucher đã hết hạn");
         }
-        if (voucher.getQuantity() != null && voucher.getQuantity() <= 0) {
-            throw new InvalidInputException("Voucher đã hết số lượng");
+        if (voucher.getQuantity() != null) {
+            long usedCount = voucher.getUsedCount() != null ? voucher.getUsedCount() : 0L;
+            if (usedCount >= voucher.getQuantity()) {
+                throw new InvalidInputException("Voucher đã hết số lượng");
+            }
         }
         if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
             throw new InvalidInputException(
@@ -218,7 +236,6 @@ public class VoucherServiceImpl implements VoucherService {
             userRepo.save(user);
         }
 
-        voucher.setQuantity(voucher.getQuantity() - 1);
         voucher.setUsedCount((voucher.getUsedCount() != null ? voucher.getUsedCount() : 0) + 1);
         voucherRepo.save(voucher);
     }
