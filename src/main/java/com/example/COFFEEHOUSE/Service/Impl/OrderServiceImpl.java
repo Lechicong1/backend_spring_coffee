@@ -394,10 +394,6 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new InvalidInputException("Chỉ được xóa đơn hàng có trạng thái PENDING");
-        }
-
         // Xóa order items trước
         List<OrderItemEntity> items = orderItemRepo.findByOrderId(orderId);
         orderItemRepo.deleteAll(items);
@@ -709,7 +705,9 @@ public class OrderServiceImpl implements OrderService {
         if (orderCode != null) {
             OrderEntity order = orderRepo.findByOrderCode(orderCode)
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với code: " + orderCode));
-
+            if (order.getPaymentStatus() == PaymentStatus.PAID) {
+                return;
+            }
             // Kiểm tra số tiền và trạng thái thanh toán
             if (amount >= order.getTotalAmount() && order.getPaymentStatus() != PaymentStatus.PAID) {
                 order.setPaymentStatus(PaymentStatus.PAID);
