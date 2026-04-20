@@ -49,13 +49,14 @@ public class CheckoutServiceImpl implements CheckoutService {
     public CheckoutOrderResp createOrderFromCart(CreateOrderReq request, String clientIp) {
         Long subtotal = calculateSubtotal(request.getItems());
 
+        for (OrderItemReq item : request.getItems()) {
+            validateStockOrderItem(item);
+        }
+
         voucherService.validateAndUseVoucher(request.getVoucherId(), request.getUserId(), subtotal);
         long voucherDiscount = voucherService.calculateDiscount(request.getVoucherId(), subtotal);
 
         long totalAmount = Math.max(0, subtotal - voucherDiscount);
-        for (OrderItemReq item : request.getItems()) {
-            validateStockOrderItem(item);
-        }
 
         String paymentUrl = null;
         if (isVnpayPayment(request.getPaymentMethod())) {
@@ -222,12 +223,11 @@ public class CheckoutServiceImpl implements CheckoutService {
             double requiredAmount = recipe.getBaseAmount() * multiplier * item.getQuantity();
 
             if (ingredient.getStockQuantity() < requiredAmount) {
-                throw new BusinessLogicException("Nguyên liệu " + ingredient.getName() + " không đủ để chế biến sản phẩm");
+                throw new BusinessLogicException(
+                        "Nguyên liệu " + ingredient.getName() + " không đủ để chế biến sản phẩm");
             }
         }
     }
-
-
 
     private boolean isVnpayPayment(PaymentMethod paymentMethod) {
         return paymentMethod == PaymentMethod.BANKING || paymentMethod == PaymentMethod.CARD;
@@ -238,8 +238,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 + (order.getShippingFee() != null ? order.getShippingFee() : 0L);
 
         int expireMinutes = (vnpayProperties.getExpireMinutes() == null || vnpayProperties.getExpireMinutes() <= 0)
-            ? 15
-            : vnpayProperties.getExpireMinutes();
+                ? 15
+                : vnpayProperties.getExpireMinutes();
 
         ZonedDateTime now = ZonedDateTime.now(resolveVnpayZoneId());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");

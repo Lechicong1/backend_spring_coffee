@@ -73,20 +73,15 @@ public class InventoryImportServiceImp implements InventoryImportService {
         BigDecimal oldQuantity = oldImport.getImportQuantity();
         BigDecimal newQuantity = request.getImportQuantity();
 
-        // Update import entity
-        oldImport.setIngredientId(request.getIngredientId());
-        oldImport.setImportQuantity(request.getImportQuantity());
-        oldImport.setTotalCost(request.getTotalCost());
-        oldImport.setNote(request.getNote());
-        inventoryImportRepo.save(oldImport);
-
         // Adjust stock quantities
         if (oldIngredientId.equals(request.getIngredientId())) {
             // CASE 1: Same ingredient - adjust the difference
             // stock = stock - old_qty + new_qty
-            Double currentStock = newIngredient.getStockQuantity() != null ? newIngredient.getStockQuantity() : 0.0;
+            Double currentStock = getStockOrZero(newIngredient);
             double adjustment = newQuantity.doubleValue() - oldQuantity.doubleValue();
-            newIngredient.setStockQuantity(currentStock + adjustment);
+            double updatedStock = currentStock + adjustment;
+            validateStockNotNegative(updatedStock, newIngredient.getName(), "cập nhật phiếu nhập");
+            newIngredient.setStockQuantity(updatedStock);
             newIngredient.setUpdatedAt(LocalDateTime.now());
             ingredientRepo.save(newIngredient);
         } else {
@@ -94,17 +89,26 @@ public class InventoryImportServiceImp implements InventoryImportService {
             // Old ingredient: subtract old quantity
             IngredientEntity oldIngredient = ingredientRepo.findById(oldIngredientId)
                     .orElseThrow(() -> new ResourceNotFoundException("Old ingredient not found with id: " + oldIngredientId));
-            Double oldIngredientStock = oldIngredient.getStockQuantity() != null ? oldIngredient.getStockQuantity() : 0.0;
-            oldIngredient.setStockQuantity(oldIngredientStock - oldQuantity.doubleValue());
+            Double oldIngredientStock = getStockOrZero(oldIngredient);
+            double updatedOldIngredientStock = oldIngredientStock - oldQuantity.doubleValue();
+            validateStockNotNegative(updatedOldIngredientStock, oldIngredient.getName(), "cập nhật phiếu nhập");
+            oldIngredient.setStockQuantity(updatedOldIngredientStock);
             oldIngredient.setUpdatedAt(LocalDateTime.now());
             ingredientRepo.save(oldIngredient);
 
             // New ingredient: add new quantity
-            Double newIngredientStock = newIngredient.getStockQuantity() != null ? newIngredient.getStockQuantity() : 0.0;
+            Double newIngredientStock = getStockOrZero(newIngredient);
             newIngredient.setStockQuantity(newIngredientStock + newQuantity.doubleValue());
             newIngredient.setUpdatedAt(LocalDateTime.now());
             ingredientRepo.save(newIngredient);
         }
+
+        // Update import entity
+        oldImport.setIngredientId(request.getIngredientId());
+        oldImport.setImportQuantity(request.getImportQuantity());
+        oldImport.setTotalCost(request.getTotalCost());
+        oldImport.setNote(request.getNote());
+        inventoryImportRepo.save(oldImport);
     }
 
     @Override
@@ -117,13 +121,15 @@ public class InventoryImportServiceImp implements InventoryImportService {
 
 
         // Subtract quantity from ingredient stock (fixing the bug mentioned in the flow)
-        IngredientEntity ingredient = ingredientRepo.findById(importEntity.getIngredientId()).orElse(null);
-        if (ingredient != null) {
-            Double currentStock = ingredient.getStockQuantity() != null ? ingredient.getStockQuantity() : 0.0;
-            ingredient.setStockQuantity(currentStock - importEntity.getImportQuantity().doubleValue());
-            ingredient.setUpdatedAt(LocalDateTime.now());
-            ingredientRepo.save(ingredient);
-        }
+        IngredientEntity ingredient = ingredientRepo.findById(importEntity.getIngredientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Ingredient not found with id: " + importEntity.getIngredientId()));
+        Double currentStock = getStockOrZero(ingredient);
+        double updatedStock = currentStock - importEntity.getImportQuantity().doubleValue();
+        validateStockNotNegative(updatedStock, ingredient.getName(), "xóa phiếu nhập");
+        ingredient.setStockQuantity(updatedStock);
+        ingredient.setUpdatedAt(LocalDateTime.now());
+        ingredientRepo.save(ingredient);
+
         // Delete import
         inventoryImportRepo.delete(importEntity);
     }
@@ -206,6 +212,16 @@ public class InventoryImportServiceImp implements InventoryImportService {
         }
         if (request.getTotalCost() == null || request.getTotalCost() < 0) {
             throw new InvalidInputException("Total cost must be greater than or equal to 0");
+        }
+    }
+
+    private Double getStockOrZero(IngredientEntity ingredient) {
+        return ingredient.getStockQuantity() != null ? ingredient.getStockQuantity() : 0.0;
+    }
+
+    private void validateStockNotNegative(double stockAfterAdjustment, String ingredientName, String action) {
+        if (stockAfterAdjustment < 0) {
+            throw new InvalidInputException("Không thể " + action + " vì tồn kho nguyên liệu '" + ingredientName + "' sẽ bị âm.");
         }
     }
 }

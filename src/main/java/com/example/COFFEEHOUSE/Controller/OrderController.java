@@ -190,7 +190,7 @@ public class OrderController {
      * Chỉ ADMIN được xóa
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN','STAFF')")
+    @PreAuthorize("hasAnyAuthority('ADMIN')")
     public ResponseEntity<ResponseData> deleteOrder(
             @PathVariable Long id) {
 
