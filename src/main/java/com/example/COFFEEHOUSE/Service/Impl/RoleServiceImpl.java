@@ -42,6 +42,7 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public List<RoleResp> findAll() {
         return roleRepo.findAll().stream()
+                .filter(role -> !role.getName().equalsIgnoreCase("USER"))
                 .map(this::mapToResp)
                 .collect(Collectors.toList());
     }
@@ -61,4 +62,3 @@ public class RoleServiceImpl implements RoleService {
                 .build();
     }
 }
-
