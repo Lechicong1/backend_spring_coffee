@@ -30,6 +30,7 @@ import com.example.COFFEEHOUSE.Service.CartItemService;
 import com.example.COFFEEHOUSE.Service.CheckoutService;
 import com.example.COFFEEHOUSE.Service.IngredientService;
 import com.example.COFFEEHOUSE.Service.OrderService;
+import com.example.COFFEEHOUSE.Service.VoucherService;
 
 import com.example.COFFEEHOUSE.Utils.CommonUtils;
 
@@ -60,6 +61,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemService cartItemService;
     private final CheckoutService checkoutService;
     private final IngredientService ingredientService;
+    private final VoucherService voucherService;
 
     @Override
     @Transactional
@@ -138,67 +140,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Tính giảm giá voucher (nếu có)
-        long voucherDiscount = 0;
-        if (request.getVoucherId() != null && request.getVoucherId() > 0) {
-            VoucherEntity voucher = voucherRepo.findById(request.getVoucherId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy voucher với ID: " + request.getVoucherId()));
-
-            // Kiểm tra voucher có hợp lệ không
-            if (!voucher.getIsActive()) {
-                throw new InvalidInputException("Voucher không còn hoạt động");
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
-                throw new InvalidInputException("Voucher chưa có hiệu lực");
-            }
-
-            if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
-                throw new InvalidInputException("Voucher đã hết hạn");
-            }
-
-            if (voucher.getQuantity() != null && voucher.getUsedCount() >= voucher.getQuantity()) {
-                throw new InvalidInputException("Voucher đã hết số lượng");
-            }
-
-            // Kiểm tra giá tối thiểu
-            if (voucher.getMinBillTotal() != null && subtotal < voucher.getMinBillTotal()) {
-                throw new InvalidInputException(
-                        String.format("Tổng tiền phải >= %d để dùng voucher này", voucher.getMinBillTotal().longValue()));
-            }
-
-            // Kiểm tra và trừ điểm của user
-            if (voucher.getPointCost() != null && voucher.getPointCost() > 0) {
-                if (request.getUserId() == null) {
-                    throw new InvalidInputException("Vui lòng đăng nhập để sử dụng voucher này");
-                }
-                UserEntity user = userRepo.findById(request.getUserId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với ID: " + request.getUserId()));
-                Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
-                if (currentPoints < voucher.getPointCost()) {
-                    throw new InvalidInputException("Bạn không đủ điểm để sử dụng voucher này");
-                }
-                user.setPoints(currentPoints - voucher.getPointCost());
-                userRepo.save(user);
-            }
-
-            // Tính giảm giá
-            if (DiscountType.FIXED == voucher.getDiscountType()) {
-                voucherDiscount = voucher.getDiscountValue().longValue();
-            } else {
-                // PERCENT
-                voucherDiscount = Math.round(subtotal * (voucher.getDiscountValue() / 100.0));
-            }
-
-            // Áp dụng giảm giá tối đa
-            if (voucher.getMaxDiscountValue() != null && voucherDiscount > voucher.getMaxDiscountValue()) {
-                voucherDiscount = voucher.getMaxDiscountValue().longValue();
-            }
-
-            // Giảm giá không quá tổng tiền
-            voucherDiscount = Math.min(voucherDiscount, subtotal);
-        }
+        voucherService.validateAndUseVoucher(request.getVoucherId(), request.getUserId(), subtotal);
+        long voucherDiscount = voucherService.calculateDiscount(request.getVoucherId(), subtotal);
 
         long totalAmount = Math.max(0, subtotal - voucherDiscount);
         PaymentStatus initialPaymentStatus = (paymentMethod == PaymentMethod.CASH)
@@ -256,7 +199,7 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(request.getStatus());
 
             if (oldStatus != OrderStatus.COMPLETED && request.getStatus() == OrderStatus.COMPLETED) {
-                addPointsToUser(order.getUserId(), order.getTotalAmount(), order.getOrderType());
+                addPointsToUser(order);
             }
         }
 
@@ -429,7 +372,7 @@ public class OrderServiceImpl implements OrderService {
             req.setProductSizeId(item.getProductSizeId());
             req.setQuantity(item.getQuantity());
             ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
-            if(productSize != null) {
+            if (productSize != null) {
                 req.setSizeName(productSize.getSizeName());
             }
             return req;
@@ -567,7 +510,8 @@ public class OrderServiceImpl implements OrderService {
                     ProductSizeEntity productSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
                     String sizeName = productSize != null ? productSize.getSizeName() : "Unknown Size";
                     String productName = productSize != null
-                            ? productRepo.findById(productSize.getProductId()).map(p -> p.getName()).orElse("Unknown Product")
+                            ? productRepo.findById(productSize.getProductId()).map(p -> p.getName())
+                                    .orElse("Unknown Product")
                             : "Unknown Product";
 
                     long lineTotal = item.getPriceAtPurchase() * item.getQuantity();
@@ -605,7 +549,8 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         OrderItemEntity item = orderItemRepo.findById(request.getOrderItemId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi tiết đơn hàng với ID: " + request.getOrderItemId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy chi tiết đơn hàng với ID: " + request.getOrderItemId()));
 
         if (!item.getOrderId().equals(order.getId())) {
             throw new InvalidInputException("Chi tiết đơn hàng không thuộc đơn hàng này");
@@ -646,9 +591,11 @@ public class OrderServiceImpl implements OrderService {
                 })
                 .collect(Collectors.toList());
     }
+
     @Override
     public List<OrderResp> getOrderByStatusAndOrderType(String status, List<OrderType> orderType) {
-        org.springframework.data.jpa.domain.Specification<OrderEntity> spec = org.springframework.data.jpa.domain.Specification.where(null);
+        org.springframework.data.jpa.domain.Specification<OrderEntity> spec = org.springframework.data.jpa.domain.Specification
+                .where(null);
 
         if (status != null && !status.trim().isEmpty()) {
             try {
@@ -666,8 +613,7 @@ public class OrderServiceImpl implements OrderService {
         // TỐI ƯU ALGORITHM: Yêu cầu DB sắp xếp giảm dần (DESC) theo thời gian tạo
         // Lưu ý: Đảm bảo trong OrderEntity của bạn có thuộc tính tên là "createdAt"
         org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(
-                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"
-        );
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt");
 
         // Truyền thêm đối tượng sort vào hàm findAll
         List<OrderEntity> orders = orderRepo.findAll(spec, sort);
@@ -686,18 +632,25 @@ public class OrderServiceImpl implements OrderService {
      * Hàm cộng điểm cho user khi order hoàn thành
      * 10000 VNĐ = 1 điểm
      */
-    private void addPointsToUser(Long userId, Long totalAmount, OrderType orderType) {
-        if (userId == null || totalAmount == null) return;
+    private void addPointsToUser(OrderEntity order) {
+        Long userId = order.getUserId();
+        Long totalAmount = order.getTotalAmount();
+        Long shippingFee = order.getShippingFee() != null ? order.getShippingFee() : 0L;
+        OrderType orderType = order.getOrderType();
+
+        if (userId == null || totalAmount == null)
+            return;
 
         if (orderType == OrderType.DELIVERY || orderType == OrderType.AT_COUNTER || orderType == OrderType.TAKEAWAY) {
             userRepo.findById(userId).ifPresent(user -> {
-                Long pointsToAdd = totalAmount / 10000;
+                Long pointsToAdd = (totalAmount + shippingFee) / 10000;
                 Long currentPoints = user.getPoints() != null ? user.getPoints() : 0L;
                 user.setPoints(currentPoints + pointsToAdd);
                 userRepo.save(user);
             });
         }
     }
+
     /**
      * Xử lý Webhook VietQR: Đọc nội dung, tìm mã đơn, cập nhật trạng thái
      */
@@ -725,7 +678,8 @@ public class OrderServiceImpl implements OrderService {
                     req.setProductSizeId(item.getProductSizeId());
                     req.setQuantity(item.getQuantity());
 
-                    // Cực kỳ quan trọng: Lấy sizeName để CommonUtils.getMultiplierBySize không bị Null
+                    // Cực kỳ quan trọng: Lấy sizeName để CommonUtils.getMultiplierBySize không bị
+                    // Null
                     ProductSizeEntity pSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
                     if (pSize != null) {
                         req.setSizeName(pSize.getSizeName());
@@ -734,7 +688,7 @@ public class OrderServiceImpl implements OrderService {
                     itemReqs.add(req);
                 }
 
-               ingredientService.deductIngredients(itemReqs);
+                ingredientService.deductIngredients(itemReqs);
             }
         } else {
             throw new InvalidInputException("Nội dung chuyển khoản không chứa mã đơn hàng hợp lệ");

@@ -5,6 +5,7 @@ import com.example.COFFEEHOUSE.DTO.Request.ProductReq;
 import com.example.COFFEEHOUSE.DTO.Response.ProductResp;
 import com.example.COFFEEHOUSE.Entity.ProductEntity;
 import com.example.COFFEEHOUSE.Reposistory.ProductRepo;
+import com.example.COFFEEHOUSE.Reposistory.RecipeRepo;
 import com.example.COFFEEHOUSE.Service.ProductService;
 import com.example.COFFEEHOUSE.Service.ProductSizeService;
 import com.example.COFFEEHOUSE.Utils.FileStorage;
@@ -24,6 +25,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSizeService productSizeService;
     private final ProductMapper productMapper;
     private final FileStorage fileStorage;
+    private final RecipeRepo recipeRepo;
 
     @Override
     @Transactional
@@ -48,7 +50,7 @@ public class ProductServiceImpl implements ProductService {
     public void updateProduct(Long id, ProductReq request, MultipartFile image) {
         ProductEntity entity = productRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        
+
         productMapper.updateEntityFromRequest(request, entity);
         if (image != null && !image.isEmpty()) {
             if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
@@ -76,6 +78,7 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = productRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         productSizeService.deleteSizesByProductId(id);
+        recipeRepo.deleteByProductId(id);
         if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
             fileStorage.deleteFile("products", entity.getImageUrl());
         }
