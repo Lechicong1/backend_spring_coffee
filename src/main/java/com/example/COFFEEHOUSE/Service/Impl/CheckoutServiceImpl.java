@@ -57,15 +57,27 @@ public class CheckoutServiceImpl implements CheckoutService {
             validateStockOrderItem(item);
         }
 
-         ingredientService.deductIngredients(request.getItems());
+        String paymentUrl = null;
+        if (isVnpayPayment(request.getPaymentMethod())) {
+            OrderEntity savedOrder = saveOrder(request, totalAmount);
+            saveOrderItems(savedOrder.getId(), request.getItems());
+            paymentUrl = buildVnpayPaymentUrl(savedOrder, clientIp);
+            cartItemService.clearCart();
+
+            return CheckoutOrderResp.builder()
+                    .orderId(savedOrder.getId())
+                    .orderCode(savedOrder.getOrderCode())
+                    .paymentMethod(savedOrder.getPaymentMethod() != null ? savedOrder.getPaymentMethod().name() : null)
+                    .paymentStatus(savedOrder.getPaymentStatus() != null ? savedOrder.getPaymentStatus().name() : null)
+                    .totalAmount(savedOrder.getTotalAmount())
+                    .paymentUrl(paymentUrl)
+                    .build();
+        }
+
+        ingredientService.deductIngredients(request.getItems());
 
         OrderEntity savedOrder = saveOrder(request, totalAmount);
         saveOrderItems(savedOrder.getId(), request.getItems());
-
-        String paymentUrl = null;
-        if (isVnpayPayment(request.getPaymentMethod())) {
-            paymentUrl = buildVnpayPaymentUrl(savedOrder, clientIp);
-        }
 
         cartItemService.clearCart();
 
@@ -122,6 +134,21 @@ public class CheckoutServiceImpl implements CheckoutService {
         if (paid && order.getPaymentStatus() != PaymentStatus.PAID) {
             order.setPaymentStatus(PaymentStatus.PAID);
             orderRepo.save(order);
+
+            // Fetch order items to deduct ingredients
+            List<OrderItemEntity> orderItems = orderItemRepo.findByOrderId(order.getId());
+            List<OrderItemReq> itemReqs = orderItems.stream()
+                .map(item -> {
+                    OrderItemReq req = new OrderItemReq();
+                    req.setProductSizeId(item.getProductSizeId());
+                    req.setQuantity(item.getQuantity());
+                    req.setPrice(item.getPriceAtPurchase());
+                    req.setNote(item.getNote());
+                    return req;
+                })
+                .collect(Collectors.toList());
+
+            ingredientService.deductIngredients(itemReqs);
         }
 
         return VnpayReturnResp.builder()

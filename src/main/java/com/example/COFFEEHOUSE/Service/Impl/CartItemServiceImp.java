@@ -60,6 +60,7 @@ public class CartItemServiceImp implements CartItemService {
         }
 
         existing.setQuantity(request.getQuantity());
+        cartItemRepo.save(existing);
     }
 
     // Xóa một mục khỏi giỏ hàng
@@ -101,4 +102,3 @@ public class CartItemServiceImp implements CartItemService {
 
 
 }
-
