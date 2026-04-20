@@ -89,6 +89,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<ProductResp> findAllForAdmin() {
+        return productRepo.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public ProductResp findById(Long id) {
         ProductEntity entity = productRepo.findById(id)
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))

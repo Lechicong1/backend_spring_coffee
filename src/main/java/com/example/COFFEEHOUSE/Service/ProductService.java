@@ -8,9 +8,16 @@ import java.util.List;
 
 public interface ProductService {
     void createProduct(ProductReq request, MultipartFile image);
+
     void updateProduct(Long id, ProductReq request, MultipartFile image);
+
     void deleteProduct(Long id);
+
     List<ProductResp> findAll();
+
+    List<ProductResp> findAllForAdmin();
+
     ProductResp findById(Long id);
+
     List<ProductResp> search(String keyword, Long categoryId);
 }
