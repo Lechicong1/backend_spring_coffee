@@ -65,7 +65,7 @@ public class ProductController {
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)
                 .message("Products retrieved successfully")
-                .data(productService.findAll())
+                .data(productService.findAllForAdmin())
                 .build());
     }
 

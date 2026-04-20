@@ -5,7 +5,6 @@ import com.example.COFFEEHOUSE.DTO.Request.ProductReq;
 import com.example.COFFEEHOUSE.DTO.Response.ProductResp;
 import com.example.COFFEEHOUSE.Entity.ProductEntity;
 import com.example.COFFEEHOUSE.Reposistory.ProductRepo;
-import com.example.COFFEEHOUSE.Reposistory.RecipeRepo;
 import com.example.COFFEEHOUSE.Service.ProductService;
 import com.example.COFFEEHOUSE.Service.ProductSizeService;
 import com.example.COFFEEHOUSE.Utils.FileStorage;
@@ -25,7 +24,6 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSizeService productSizeService;
     private final ProductMapper productMapper;
     private final FileStorage fileStorage;
-    private final RecipeRepo recipeRepo;
 
     @Override
     @Transactional
@@ -77,16 +75,21 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(Long id) {
         ProductEntity entity = productRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        productSizeService.deleteSizesByProductId(id);
-        recipeRepo.deleteByProductId(id);
-        if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
-            fileStorage.deleteFile("products", entity.getImageUrl());
-        }
-        productRepo.delete(entity);
+
+        entity.setIsActive(false);
+        productRepo.save(entity);
     }
 
     @Override
     public List<ProductResp> findAll() {
+        return productRepo.findAll().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProductResp> findAllForAdmin() {
         return productRepo.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -95,6 +98,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResp findById(Long id) {
         ProductEntity entity = productRepo.findById(id)
+                .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .orElseThrow(() -> new RuntimeException("Product not found"));
         return mapToResponse(entity);
     }
@@ -109,6 +113,7 @@ public class ProductServiceImpl implements ProductService {
             entities = productRepo.findByNameContainingIgnoreCase(searchKey);
         }
         return entities.stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
