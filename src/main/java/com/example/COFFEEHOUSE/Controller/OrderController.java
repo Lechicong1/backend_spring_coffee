@@ -175,8 +175,8 @@ public class OrderController {
      */
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
-    public ResponseEntity<ResponseData> getAllOrders() {
-        var orders = orderService.getAllOrders();
+    public ResponseEntity<ResponseData> getAllOrders(@RequestParam(required = false) String status) {
+        var orders = orderService.getAllOrders(status);
 
         return ResponseEntity.ok(ResponseData.builder()
                 .success(true)

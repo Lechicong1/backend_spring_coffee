@@ -173,7 +173,24 @@ public class OrderServiceImpl implements OrderService {
             item.setOrderId(savedOrder.getId());
             orderItemRepo.save(item);
         }
+        if (paymentMethod == PaymentMethod.CASH) {
+            List<OrderItemReq> itemReqs = new ArrayList<>();
+            for (OrderItemEntity item : orderItems) {
+                OrderItemReq req = new OrderItemReq();
+                req.setProductSizeId(item.getProductSizeId());
+                req.setQuantity(item.getQuantity());
 
+                // Lấy sizeName để hàm deductIngredients tính toán định lượng (multiplier) chính xác
+                ProductSizeEntity pSize = productSizeRepo.findById(item.getProductSizeId()).orElse(null);
+                if (pSize != null) {
+                    req.setSizeName(pSize.getSizeName());
+                }
+                itemReqs.add(req);
+            }
+
+            // Gọi hàm trừ kho (Đã có sẵn cơ chế Optimistic Locking để chống lỗi đồng thời)
+            ingredientService.deductIngredients(itemReqs);
+        }
         // Xóa giỏ hàng sau khi tạo order thành công
         cartItemService.clearCart();
 
@@ -316,8 +333,19 @@ public class OrderServiceImpl implements OrderService {
      * Lấy tất cả đơn hàng
      */
     @Override
-    public List<OrderResp> getAllOrders() {
-        List<OrderEntity> orders = orderRepo.findAll();
+    public List<OrderResp> getAllOrders(String status) {
+        List<OrderEntity> orders;
+
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                OrderStatus statusEnum = OrderStatus.valueOf(status.trim().toUpperCase());
+                orders = orderRepo.findByStatus(statusEnum);
+            } catch (IllegalArgumentException ex) {
+                throw new InvalidInputException("Trạng thái đơn hàng không hợp lệ: " + status);
+            }
+        } else {
+            orders = orderRepo.findAll();
+        }
 
         return orders.stream()
                 .map(order -> {
@@ -326,6 +354,7 @@ public class OrderServiceImpl implements OrderService {
                 })
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Xóa đơn hàng

@@ -1,6 +1,7 @@
 package com.example.COFFEEHOUSE.Reposistory;
 
 import com.example.COFFEEHOUSE.Entity.OrderEntity;
+import com.example.COFFEEHOUSE.Enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -12,4 +13,6 @@ import java.util.Optional;
 public interface OrderRepo extends JpaRepository<OrderEntity, Long>, JpaSpecificationExecutor<OrderEntity> {
     Optional<OrderEntity> findByOrderCode(String orderCode);
     List<OrderEntity> findByUserId(Long userId);
+    List<OrderEntity> findByStatus(OrderStatus status);
+
 }
