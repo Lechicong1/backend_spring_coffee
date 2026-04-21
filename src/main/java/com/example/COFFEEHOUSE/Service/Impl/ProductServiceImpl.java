@@ -82,8 +82,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductResp> findAll() {
-        return productRepo.findAll().stream()
-                .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
+        return productRepo.findAllByIsActiveTrue().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -108,12 +107,11 @@ public class ProductServiceImpl implements ProductService {
         String searchKey = keyword == null ? "" : keyword.trim();
         List<ProductEntity> entities;
         if (categoryId != null) {
-            entities = productRepo.findByCategoryIdAndNameContainingIgnoreCase(categoryId, searchKey);
+            entities = productRepo.findByCategoryIdAndNameContainingIgnoreCaseAndIsActiveTrue(categoryId, searchKey);
         } else {
-            entities = productRepo.findByNameContainingIgnoreCase(searchKey);
+            entities = productRepo.findByNameContainingIgnoreCaseAndIsActiveTrue(searchKey);
         }
         return entities.stream()
-                .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

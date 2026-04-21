@@ -20,7 +20,7 @@ public interface OrderService {
     OrderResp getOrderById(Long orderId);
     OrderResp getOrderByCode(String orderCode);
     List<OrderResp> getOrdersByUserId(Long userId);
-    List<OrderResp> getAllOrders();
+    List<OrderResp> getAllOrders(String status);
     void deleteOrder(Long orderId);
     InvoiceResp getInvoiceByCode(String orderCode);
     OrderDetailResp getOrderDetail(Long orderId);

@@ -8,6 +8,8 @@ import java.util.List;
 
 @Repository
 public interface ProductRepo extends JpaRepository<ProductEntity, Long> {
-    List<ProductEntity> findByNameContainingIgnoreCase(String name);
-    List<ProductEntity> findByCategoryIdAndNameContainingIgnoreCase(Long categoryId, String name);
+    List<ProductEntity> findByCategoryIdAndNameContainingIgnoreCaseAndIsActiveTrue(Long categoryId, String name);
+    List<ProductEntity> findAllByIsActiveTrue();
+    // Tương tự cho hàm không có categoryId
+    List<ProductEntity> findByNameContainingIgnoreCaseAndIsActiveTrue(String name);
 }

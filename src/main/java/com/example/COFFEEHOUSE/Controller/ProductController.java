@@ -71,7 +71,7 @@ public class ProductController {
 
     @GetMapping("/search")
     public ResponseEntity<ResponseData> search(
-            @RequestParam("q") String keyword,
+            @RequestParam(value = "q", required = false) String keyword,
             @RequestParam(value = "categoryId", required = false) Long categoryId) {
         var products = productService.search(keyword, categoryId);
         return ResponseEntity.ok(ResponseData.builder()
