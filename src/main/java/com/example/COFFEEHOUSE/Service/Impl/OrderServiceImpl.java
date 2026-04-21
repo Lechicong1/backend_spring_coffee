@@ -139,6 +139,15 @@ public class OrderServiceImpl implements OrderService {
             orderItems.add(orderItem);
         }
 
+        // Auto-resolve userId từ receiverPhone cho trường hợp tạo đơn tại POS
+        if (request.getUserId() == null && request.getReceiverPhone() != null
+                && !request.getReceiverPhone().trim().isEmpty()) {
+            UserEntity user = userRepo.findByPhoneNumber(request.getReceiverPhone().trim());
+            if (user != null) {
+                request.setUserId(user.getId());
+            }
+        }
+
         // Tính giảm giá voucher (nếu có)
         voucherService.validateAndUseVoucher(request.getVoucherId(), request.getUserId(), subtotal);
         long voucherDiscount = voucherService.calculateDiscount(request.getVoucherId(), subtotal);
