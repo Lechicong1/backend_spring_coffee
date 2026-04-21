@@ -238,7 +238,8 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
     }
 
     /**
-     * Logic kiểm kho tối ưu: Kết hợp % và ngưỡng tuyệt đối.
+     * Logic kiểm kho tối ưu: Kết hợp % và ngưỡng tuyệt đối, đã gỡ bỏ
+     * massiveDifference.
      */
     private String calculateStatus(BigDecimal theoryQuantity, BigDecimal actualQuantity, String unit) {
         BigDecimal safeTheory = theoryQuantity != null ? theoryQuantity : BigDecimal.ZERO;
@@ -264,12 +265,14 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
         boolean overPercentCritical = percentDiff.compareTo(BigDecimal.valueOf(5)) > 0;
         boolean overPercentWarning = percentDiff.compareTo(BigDecimal.valueOf(2)) > 0;
         boolean overAbsoluteThreshold = absDifference.compareTo(threshold) > 0;
-        boolean massiveDifference = absDifference.compareTo(threshold.multiply(BigDecimal.valueOf(3))) > 0;
 
-        if (massiveDifference || (overPercentCritical && overAbsoluteThreshold)) {
-            return isMissing ? "CRITICAL" : "WARNING";
-        } else if (overPercentWarning && overAbsoluteThreshold) {
-            return "WARNING";
+        // Xử lý trạng thái an toàn và có khả năng scale tốt
+        if (overAbsoluteThreshold) {
+            if (overPercentCritical) {
+                return isMissing ? "CRITICAL" : "WARNING";
+            } else if (overPercentWarning) {
+                return "WARNING";
+            }
         }
 
         return "OK";
@@ -335,16 +338,28 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
      */
     private BigDecimal getDefaultAbsoluteThreshold(String unit) {
         if (unit == null || unit.trim().isEmpty()) {
-            return BigDecimal.valueOf(5);
+            return BigDecimal.valueOf(5); // Default an toàn
         }
 
         String lowerUnit = unit.trim().toLowerCase();
-        if (lowerUnit.equals("g") || lowerUnit.equals("ml")) {
-            return BigDecimal.valueOf(50);
-        } else if (lowerUnit.equals("kg") || lowerUnit.equals("l")) {
-            return BigDecimal.valueOf(0.05);
-        } else {
-            return BigDecimal.valueOf(2);
+
+        // 1. Nhóm CHẤT LỎNG (Sữa, Syrup, Nước cốt)
+        // Chấp nhận sai số cao hơn (100ml) vì dính thành ca, rót tràn, bọt sữa
+        if (lowerUnit.equals("ml")) {
+            return BigDecimal.valueOf(100);
+        } else if (lowerUnit.equals("l")) {
+            return BigDecimal.valueOf(0.1);
+        }
+        // 2. Nhóm CHẤT RẮN (Cà phê hạt, Trà, Bột các loại)
+        // Cần siết chặt hơn (50g) vì giá trị cao, tương đương hao hụt tối đa 2-3 ly
+        else if (lowerUnit.equals("g")) {
+            return BigDecimal.valueOf(100);
+        } else if (lowerUnit.equals("kg")) {
+            return BigDecimal.valueOf(0.1);
+        }
+        // 3. Nhóm ĐẾM SỐ LƯỢNG (Chai, Lon, Quả, Cái)
+        else {
+            return BigDecimal.valueOf(2); // Cho phép đếm nhầm/hao hụt 2 đơn vị
         }
     }
 }
