@@ -21,9 +21,7 @@ public class CommonUtils {
         return "ORD" + randomNum;
     }
     public static float getMultiplierBySize(String sizeName) {
-        if (sizeName == null) {
-            throw new IllegalArgumentException("Kích thước không được để trống");
-        }
+
         return (float) switch (sizeName.toUpperCase()) {
             case "M" -> 1;
             case "L" -> 1.2;

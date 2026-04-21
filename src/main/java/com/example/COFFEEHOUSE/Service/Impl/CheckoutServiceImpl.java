@@ -145,10 +145,14 @@ public class CheckoutServiceImpl implements CheckoutService {
                     req.setQuantity(item.getQuantity());
                     req.setPrice(item.getPriceAtPurchase());
                     req.setNote(item.getNote());
+                    // Lookup sizeName từ ProductSizeEntity để getMultiplierBySize không bị null
+                    productSizeRepo.findById(item.getProductSizeId()).ifPresent(ps ->
+                        req.setSizeName(ps.getSizeName())
+                    );
                     return req;
                 })
                 .collect(Collectors.toList());
-
+            System.out.println("sizeName "+ itemReqs.get(0).getSizeName());
             ingredientService.deductIngredients(itemReqs);
         }
 
