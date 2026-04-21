@@ -57,8 +57,8 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
         // Calculate difference
         BigDecimal difference = request.getActualQuantity().subtract(theoryQuantity);
 
-        // Calculate status based on percent difference
-        String status = calculateStatus(theoryQuantity, request.getActualQuantity());
+        // Calculate status based on percent + absolute threshold by unit
+        String status = calculateStatus(theoryQuantity, request.getActualQuantity(), ingredient.getUnit());
 
         // Build entity
         InventoryCheckEntity entity = InventoryCheckEntity.builder()
@@ -91,8 +91,8 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
         // Calculate difference
         BigDecimal difference = request.getActualQuantity().subtract(theoryQuantity);
 
-        // Calculate status
-        String status = calculateStatus(theoryQuantity, request.getActualQuantity());
+        // Calculate status based on percent + absolute threshold by unit
+        String status = calculateStatus(theoryQuantity, request.getActualQuantity(), ingredient.getUnit());
 
         // Find existing check for today (UPSERT logic)
         Optional<InventoryCheckEntity> existingCheck = inventoryCheckRepo
@@ -238,29 +238,41 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
     }
 
     /**
-     * Calculate status based on percent difference
-     * < 1%: OK
-     * 1% - 2%: OK
-     * 2% - 5%: WARNING
-     * > 5%: CRITICAL
+     * Logic kiểm kho tối ưu: Kết hợp % và ngưỡng tuyệt đối.
      */
-    private String calculateStatus(BigDecimal theoryQuantity, BigDecimal actualQuantity) {
-        if (theoryQuantity == null || theoryQuantity.compareTo(BigDecimal.ZERO) == 0) {
+    private String calculateStatus(BigDecimal theoryQuantity, BigDecimal actualQuantity, String unit) {
+        BigDecimal safeTheory = theoryQuantity != null ? theoryQuantity : BigDecimal.ZERO;
+        BigDecimal safeActual = actualQuantity != null ? actualQuantity : BigDecimal.ZERO;
+
+        BigDecimal difference = safeActual.subtract(safeTheory);
+        BigDecimal absDifference = difference.abs();
+        BigDecimal threshold = getDefaultAbsoluteThreshold(unit);
+
+        // Trường hợp lý thuyết = 0: không tính %, chỉ xét ngưỡng tuyệt đối
+        if (safeTheory.compareTo(BigDecimal.ZERO) == 0) {
+            if (safeActual.compareTo(BigDecimal.ZERO) > 0 && absDifference.compareTo(threshold) > 0) {
+                return "WARNING";
+            }
             return "OK";
         }
 
-        BigDecimal difference = actualQuantity.subtract(theoryQuantity);
-        BigDecimal percentDiff = difference.abs()
-                .divide(theoryQuantity, 4, RoundingMode.HALF_UP)
+        BigDecimal percentDiff = absDifference
+                .divide(safeTheory, 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100));
 
-        if (percentDiff.compareTo(BigDecimal.valueOf(5)) > 0) {
-            return "CRITICAL";
-        } else if (percentDiff.compareTo(BigDecimal.valueOf(2)) > 0) {
+        boolean isMissing = difference.compareTo(BigDecimal.ZERO) < 0;
+        boolean overPercentCritical = percentDiff.compareTo(BigDecimal.valueOf(5)) > 0;
+        boolean overPercentWarning = percentDiff.compareTo(BigDecimal.valueOf(2)) > 0;
+        boolean overAbsoluteThreshold = absDifference.compareTo(threshold) > 0;
+        boolean massiveDifference = absDifference.compareTo(threshold.multiply(BigDecimal.valueOf(3))) > 0;
+
+        if (massiveDifference || (overPercentCritical && overAbsoluteThreshold)) {
+            return isMissing ? "CRITICAL" : "WARNING";
+        } else if (overPercentWarning && overAbsoluteThreshold) {
             return "WARNING";
-        } else {
-            return "OK";
         }
+
+        return "OK";
     }
 
     /**
@@ -268,6 +280,9 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
      */
     private BigDecimal calculatePercentDifference(BigDecimal theoryQuantity, BigDecimal actualQuantity) {
         if (theoryQuantity == null || theoryQuantity.compareTo(BigDecimal.ZERO) == 0) {
+            if (actualQuantity != null && actualQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                return BigDecimal.valueOf(100.00).setScale(2, RoundingMode.HALF_UP);
+            }
             return BigDecimal.ZERO;
         }
 
@@ -297,7 +312,8 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
     }
 
     private InventoryCheckResp toResponseWithIngredient(InventoryCheckEntity entity, IngredientEntity ingredient) {
-        String status = calculateStatus(entity.getTheoryQuantity(), entity.getActualQuantity());
+        String unit = ingredient != null ? ingredient.getUnit() : null;
+        String status = calculateStatus(entity.getTheoryQuantity(), entity.getActualQuantity(), unit);
         BigDecimal percentDiff = calculatePercentDifference(entity.getTheoryQuantity(), entity.getActualQuantity());
 
         return InventoryCheckResp.builder()
@@ -312,5 +328,23 @@ public class InventoryCheckServiceImp implements InventoryCheckService {
                 .note(entity.getNote())
                 .checkedAt(entity.getCheckedAt())
                 .build();
+    }
+
+    /**
+     * Nội suy ngưỡng dung sai tuyệt đối dựa vào đơn vị tính.
+     */
+    private BigDecimal getDefaultAbsoluteThreshold(String unit) {
+        if (unit == null || unit.trim().isEmpty()) {
+            return BigDecimal.valueOf(5);
+        }
+
+        String lowerUnit = unit.trim().toLowerCase();
+        if (lowerUnit.equals("g") || lowerUnit.equals("ml")) {
+            return BigDecimal.valueOf(50);
+        } else if (lowerUnit.equals("kg") || lowerUnit.equals("l")) {
+            return BigDecimal.valueOf(0.05);
+        } else {
+            return BigDecimal.valueOf(2);
+        }
     }
 }
