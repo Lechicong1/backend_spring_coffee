@@ -12,5 +12,8 @@ public class CartItemResp {
     private Long userId;
     private Long productSizeId;
     private Integer quantity;
+    private String productName;
+    private String productImageUrl;
+    private String sizeName;
+    private Long price;
 }
-
