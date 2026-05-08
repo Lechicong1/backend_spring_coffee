@@ -42,9 +42,31 @@ public class ProductSizeServiceImpl implements ProductSizeService {
     @Override
     @Transactional
     public void updateSizesForProduct(Long productId, List<ProductSizeReq> sizes) {
-        // Simple approach: delete existing and insert new
-        productSizeRepo.deleteByProductId(productId);
-        saveSizesForProduct(productId, sizes);
+        if (sizes == null) {
+            return;
+        }
+
+        List<ProductSizeEntity> existingSizes = productSizeRepo.findByProductId(productId);
+
+        // Update or create sizes
+        for (ProductSizeReq req : sizes) {
+            ProductSizeEntity existingSize = existingSizes.stream()
+                    .filter(existing -> existing.getSizeName().equalsIgnoreCase(req.getSizeName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingSize != null) {
+                // Update price
+                existingSize.setPrice(req.getPrice() != null ? req.getPrice() : 0L);
+                productSizeRepo.save(existingSize);
+            } else {
+                // Create new
+                ProductSizeEntity newSize = productSizeMapper.toEntity(req);
+                newSize.setProductId(productId);
+                newSize.setPrice(req.getPrice() != null ? req.getPrice() : 0L);
+                productSizeRepo.save(newSize);
+            }
+        }
     }
 
     @Override
