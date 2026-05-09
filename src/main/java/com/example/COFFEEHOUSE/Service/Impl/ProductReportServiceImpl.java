@@ -4,10 +4,14 @@ import com.example.COFFEEHOUSE.DTO.Request.ProductReportFilterReq;
 import com.example.COFFEEHOUSE.DTO.Response.ProductReportDataResp;
 import com.example.COFFEEHOUSE.DTO.Response.ProductReportRowResp;
 import com.example.COFFEEHOUSE.DTO.Response.ProductReportSummaryResp;
+import com.example.COFFEEHOUSE.DTO.Response.OrderResp;
 import com.example.COFFEEHOUSE.DTO.ResponseData;
+import com.example.COFFEEHOUSE.DTO.Mapper.OrderMapper;
 import com.example.COFFEEHOUSE.Entity.CategoryEntity;
+import com.example.COFFEEHOUSE.Entity.OrderEntity;
 import com.example.COFFEEHOUSE.Enums.OrderStatus;
 import com.example.COFFEEHOUSE.Reposistory.CategoryRepo;
+import com.example.COFFEEHOUSE.Reposistory.OrderRepo;
 import com.example.COFFEEHOUSE.Reposistory.ProductReportRepository;
 import com.example.COFFEEHOUSE.Service.ProductReportService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,8 @@ public class ProductReportServiceImpl implements ProductReportService {
 
     private final ProductReportRepository productReportRepository;
     private final CategoryRepo categoryRepo;
+    private final OrderRepo orderRepo;
+    private final OrderMapper orderMapper;
 
     @Override
     public ResponseData getReportData(ProductReportFilterReq filterReq) {
@@ -131,13 +137,13 @@ public class ProductReportServiceImpl implements ProductReportService {
     }
 
     @Override
-    public ResponseData getTotalRevenue(LocalDate startDate, LocalDate endDate, Long categoryId) {
+    public ResponseData getTotalRevenue(LocalDate startDate, LocalDate endDate) {
         try {
             LocalDateTime startDateTime = startDate.atStartOfDay();
             LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-            
-            Long revenue = productReportRepository.getTotalRevenue(startDateTime, endDateTime, categoryId);
-            
+
+            Long revenue = productReportRepository.getTotalRevenue(startDateTime, endDateTime);
+
             return ResponseData.builder()
                     .success(true)
                     .data(java.util.Map.of(
@@ -159,9 +165,9 @@ public class ProductReportServiceImpl implements ProductReportService {
         try {
             LocalDateTime startDateTime = startDate.atStartOfDay();
             LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-            
+
             Long expense = productReportRepository.getInventoryExpense(startDateTime, endDateTime);
-            
+
             return ResponseData.builder()
                     .success(true)
                     .data(java.util.Map.of(
@@ -179,21 +185,48 @@ public class ProductReportServiceImpl implements ProductReportService {
     }
 
     @Override
-    public ResponseData getSalaryExpense() {
+    public ResponseData getSalaryExpense(LocalDate startDate, LocalDate endDate) {
         try {
-            Long totalSalary = productReportRepository.getSalaryExpense();
-            
+            Long totalSalary = productReportRepository.getSalaryExpense(startDate, endDate);
+
             return ResponseData.builder()
                     .success(true)
                     .data(java.util.Map.of(
                             "totalSalaryExpense", totalSalary,
-                            "currency", "VND"
+                            "currency", "VND",
+                            "period", startDate + " to " + endDate
                     ))
                     .build();
         } catch (Exception e) {
             return ResponseData.builder()
                     .success(false)
                     .message("Error calculating salary expense: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public ResponseData getCompletedOrders(LocalDate startDate, LocalDate endDate) {
+        try {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+            List<OrderEntity> orders = orderRepo.findCompletedOrdersByDateRange(
+                    OrderStatus.COMPLETED,
+                    startDateTime,
+                    endDateTime
+            );
+
+            List<OrderResp> orderResps = orderMapper.toResponseList(orders);
+
+            return ResponseData.builder()
+                    .success(true)
+                    .data(orderResps)
+                    .build();
+        } catch (Exception e) {
+            return ResponseData.builder()
+                    .success(false)
+                    .message("Error fetching completed orders: " + e.getMessage())
                     .build();
         }
     }

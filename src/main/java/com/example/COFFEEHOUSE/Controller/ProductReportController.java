@@ -32,13 +32,12 @@ public class ProductReportController {
     @GetMapping("/revenue")
     public ResponseEntity<ResponseData> getTotalRevenue(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long categoryId) {
-        ResponseData response = productReportService.getTotalRevenue(startDate, endDate, categoryId);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        ResponseData response = productReportService.getTotalRevenue(startDate, endDate);
         return ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response);
     }
 
-        @GetMapping("/inventory-expense")
+    @GetMapping("/inventory-expense")
     public ResponseEntity<ResponseData> getInventoryExpense(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -47,8 +46,18 @@ public class ProductReportController {
     }
 
     @GetMapping("/salary-expense")
-    public ResponseEntity<ResponseData> getSalaryExpense() {
-        ResponseData response = productReportService.getSalaryExpense();
+    public ResponseEntity<ResponseData> getSalaryExpense(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        ResponseData response = productReportService.getSalaryExpense(startDate, endDate);
+        return ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response);
+    }
+
+    @GetMapping("/completed-orders")
+    public ResponseEntity<ResponseData> getCompletedOrders(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        ResponseData response = productReportService.getCompletedOrders(startDate, endDate);
         return ResponseEntity.status(response.isSuccess() ? 200 : 400).body(response);
     }
 }
