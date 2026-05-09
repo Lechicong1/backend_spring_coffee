@@ -40,10 +40,7 @@ public class OrderController {
     private static final String MSG_DELETED = "Đơn hàng được xóa thành công";
     private static final String MSG_CANCELLED = "Đơn hàng được hủy thành công";
 
-    /**
-     * POST /orders - Tạo đơn hàng mới
-     * Chỉ STAFF/ADMIN mới được tạo
-     */
+
     @PostMapping
 //    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> createOrder(

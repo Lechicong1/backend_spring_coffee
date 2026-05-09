@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -39,23 +40,21 @@ public interface ProductReportRepository extends JpaRepository<OrderItemEntity, 
     @Query(value = "SELECT COALESCE(SUM(oi.quantity * oi.price_at_purchase), 0) FROM order_items oi "
             + "JOIN orders o ON oi.order_id = o.id "
             + "WHERE o.status = 'COMPLETED' "
-            + "AND o.created_at BETWEEN :startDate AND :endDate "
-            + "AND (:categoryId IS NULL OR EXISTS (SELECT 1 FROM product_sizes ps JOIN products p ON ps.product_id = p.id "
-            + "WHERE ps.id = oi.product_size_id AND p.category_id = :categoryId))",
+            + "AND o.created_at BETWEEN :startDate AND :endDate",
             nativeQuery = true)
-    Long getTotalRevenue(
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
-            @Param("categoryId") Long categoryId);
+    Long getTotalRevenue( @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query(value = "SELECT COALESCE(SUM(ii.total_cost), 0) FROM inventory_imports ii "
-            + "WHERE ii.import_date BETWEEN :startDate AND :endDate",
-            nativeQuery = true)
+                   + "WHERE ii.import_date BETWEEN :startDate AND :endDate",
+                   nativeQuery = true)
     Long getInventoryExpense(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
-    @Query(value = "SELECT COALESCE(SUM(e.salary), 0) FROM employees e",
+    @Query(value = "SELECT COALESCE(SUM(e.salary), 0) FROM employees e "
+            + "WHERE e.hiredate BETWEEN :startDate AND :endDate",
             nativeQuery = true)
-    Long getSalaryExpense();
+    Long getSalaryExpense(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }
